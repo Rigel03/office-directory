@@ -76,7 +76,7 @@ const server = app.listen(0, async () => {
 
     // Verify short code and formatted location
     const santos = employees.find(e => e.full_name.includes('SANTOS'));
-    if (!santos || santos.unit_code !== 'OPS' || santos.location !== '3rd Floor · Desk 312') {
+    if (!santos || santos.unit_code !== 'TPMD' || santos.location !== '4th Floor · TPMD Urban Transport Bay') {
       throw new Error(`Santos structured data mismatch: unit_code=${santos?.unit_code}, location=${santos?.location}`);
     }
     console.log(`✓ Santos short code=${santos.unit_code}, location="${santos.location}"`);

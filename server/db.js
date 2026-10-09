@@ -167,7 +167,7 @@ function seedData() {
     insertUser.run('viewer', viewerHash, 'viewer', 'Jordan Lee (Viewer)');
   }
 
-  // Seed Units
+  // Seed Units (Official Divisions)
   const unitCount = db.prepare('SELECT COUNT(*) as count FROM units').get().count;
   if (unitCount === 0) {
     const insertUnit = db.prepare(`
@@ -175,14 +175,12 @@ function seedData() {
       VALUES (?, ?, ?, ?)
     `);
     const units = [
-      ['Office of the Director', 'ODIR', '5th Floor', 'Executive management and overall office leadership'],
-      ['Operations Division', 'OPS', '3rd Floor', 'Core operational service delivery and program execution'],
-      ['Human Resources Management', 'HR', '2nd Floor', 'Personnel management, recruitment, and staff development'],
-      ['Finance & Budget Division', 'FIN', '3rd Floor', 'Financial management, budgeting, and accounting'],
-      ['Information Technology Services', 'IT', '2nd Floor', 'IT infrastructure, systems development, and helpdesk'],
-      ['Records & Archives Division', 'REC', 'Ground Floor', 'Official document archiving and record keeping'],
-      ['General Services Division', 'GSD', 'Basement', 'Logistics, physical facilities, security, and supply'],
-      ['Planning & Policy Division', 'PPD', '4th Floor', 'Strategic policy planning, monitoring, and evaluation']
+      ['Administrative and Support Division', 'ASD', '2nd Floor', 'Personnel, financial administration, budget, records, and general support'],
+      ['Motorized Vehicle and Franchising Regulatory Division', 'MVFRD', 'Ground Floor', 'Franchising regulatory services, motorized tricycle and public conveyance regulation'],
+      ['Facilities Management and Operations Division', 'FMOD', 'Basement', 'Logistics, physical facilities, traffic equipment maintenance, and field operations'],
+      ['Traffic Engineering and Infrastructure Division', 'TEID', '3rd Floor', 'Traffic signal systems, road infrastructure design, geometric improvements, and electronics'],
+      ['Traffic Enforcement and Street Management Division', 'TESMD', 'Ground Floor', 'Field traffic law enforcement, street parking regulation, and road clearing operations'],
+      ['Transport Planning and Management Division', 'TPMD', '4th Floor', 'Comprehensive transport planning, traffic studies, data analytics, and route management']
     ];
     for (const u of units) {
       insertUnit.run(...u);
@@ -194,25 +192,25 @@ function seedData() {
   if (roomCount === 0) {
     const insertRoom = db.prepare('INSERT INTO rooms (name, floor) VALUES (?, ?)');
     const sampleRooms = [
-      ['Archive Room 101', 'Ground Floor'],
+      ['MVFRD Licensing Bay 1', 'Ground Floor'],
+      ['TESMD Dispatch Station', 'Ground Floor'],
       ['Front Reception Desk', 'Ground Floor'],
-      ['Central File Vault', 'Ground Floor'],
-      ['HR Bay 2', '2nd Floor'],
-      ['HR Bay 4', '2nd Floor'],
-      ['IT Helpdesk Desk 1', '2nd Floor'],
-      ['Server Room Annex B', '2nd Floor'],
-      ['Desk 312', '3rd Floor'],
-      ['Finance Rm 301', '3rd Floor'],
-      ['Finance Rm 302', '3rd Floor'],
-      ['Operations Rm 305', '3rd Floor'],
-      ['Room 408', '4th Floor'],
-      ['Project Evaluation Bay 4', '4th Floor'],
-      ['Conference Hall A', '4th Floor'],
-      ['Suite 501', '5th Floor'],
-      ['Executive Board Room', '5th Floor'],
-      ['Supply Warehouse', 'Basement'],
-      ['Logistics Depo B', 'Basement'],
-      ['Facilities Workshop', 'Basement']
+      ['Public Assistance Counter', 'Ground Floor'],
+      ['ASD Administrative Suite', '2nd Floor'],
+      ['ASD Human Resource Bay', '2nd Floor'],
+      ['ASD Records & Archives Vault', '2nd Floor'],
+      ['Finance & Budget Office 204', '2nd Floor'],
+      ['TEID Traffic Signals Lab', '3rd Floor'],
+      ['TEID Geometric Design Room', '3rd Floor'],
+      ['Command & Traffic Control Center 301', '3rd Floor'],
+      ['TPMD Urban Transport Bay', '4th Floor'],
+      ['TPMD Survey & Data Analytics Rm', '4th Floor'],
+      ['Executive Conference Hall A', '4th Floor'],
+      ['Director & Division Chiefs Suite', '5th Floor'],
+      ['Executive Board Room 502', '5th Floor'],
+      ['FMOD Logistics Workshop', 'Basement'],
+      ['FMOD Supply Warehouse', 'Basement'],
+      ['Traffic Equipment Depo', 'Basement']
     ];
     for (const r of sampleRooms) {
       insertRoom.run(...r);
@@ -239,64 +237,64 @@ function seedData() {
     const rawEmployees = [
       {
         name: 'SANTOS, Maria C.',
-        position: 'Senior Operations Officer',
-        unitCode: 'OPS',
-        floor: '3rd Floor',
-        room: 'Desk 312',
+        position: 'Senior Transport Planning Officer',
+        unitCode: 'TPMD',
+        floor: '4th Floor',
+        room: 'TPMD Urban Transport Bay',
         email: 'm.santos@office.gov',
         phone: 'Ext. 401',
         status: 'active',
         verified: '2026-09-15',
-        notes: 'Lead contact for ISO audits'
+        notes: 'Lead focal for public transport route rationalization'
       },
       {
         name: 'DELA CRUZ, Juan P.',
         position: 'Administrative Assistant',
-        unitCode: 'HR',
+        unitCode: 'ASD',
         floor: '2nd Floor',
-        room: 'HR Bay 4',
+        room: 'ASD Administrative Suite',
         email: 'j.delacruz@office.gov',
         phone: 'Ext. 102',
         status: 'active',
         verified: '2026-08-20',
-        notes: 'Onboarding coordinator'
+        notes: 'Division document tracking and communications officer'
       },
       {
         name: 'REYES, Antonio B.',
-        position: 'Information Systems Analyst',
-        unitCode: 'IT',
-        floor: '2nd Floor',
-        room: 'Server Room Annex B',
+        position: 'Traffic Systems Analyst',
+        unitCode: 'TEID',
+        floor: '3rd Floor',
+        room: 'Command & Traffic Control Center 301',
         email: 'a.reyes@office.gov',
         phone: 'Ext. 550',
         status: 'active',
         verified: '2026-09-30',
-        notes: 'Network & cybersecurity lead'
+        notes: 'Traffic signals optimization & CCTV telemetry lead'
       },
       {
         name: 'GARCIA, Elena M.',
-        position: 'Records Officer II',
-        unitCode: 'REC',
+        position: 'Franchising Regulatory Officer II',
+        unitCode: 'MVFRD',
         floor: 'Ground Floor',
-        room: 'Archive Room 101',
+        room: 'MVFRD Licensing Bay 1',
         email: 'e.garcia@office.gov',
         phone: 'Ext. 204',
         status: 'active',
         verified: '2026-07-10',
-        notes: ''
+        notes: 'Tricycle franchise renewals evaluator'
       },
       {
         // Missing position -> needs_review = 1
         name: 'BAUTISTA, Carlos R.',
         position: '',
-        unitCode: 'FIN',
-        floor: '3rd Floor',
-        room: 'Finance Rm 302',
+        unitCode: 'ASD',
+        floor: '2nd Floor',
+        room: 'Finance & Budget Office 204',
         email: 'c.bautista@office.gov',
         phone: 'Ext. 310',
         status: 'active',
         verified: null,
-        notes: 'Transferred from Treasury; position pending confirmation'
+        notes: 'Transferred from Treasury; position title awaiting civil service confirmation'
       },
       {
         // Missing unit -> needs_review = 1
@@ -304,50 +302,50 @@ function seedData() {
         position: 'Project Evaluation Officer',
         unitCode: '',
         floor: '4th Floor',
-        room: 'Room 408',
+        room: 'Executive Conference Hall A',
         email: 'p.aquino@office.gov',
         phone: 'Ext. 415',
         status: 'active',
         verified: null,
-        notes: 'Unit realignment pending management memo'
+        notes: 'Division reassignment pending executive order'
       },
       {
         name: 'MENDOZA, Roberto S.',
-        position: 'Executive Director',
-        unitCode: 'ODIR',
-        floor: '5th Floor',
-        room: 'Suite 501',
+        position: 'Division Chief / Officer-in-Charge',
+        unitCode: 'ASD',
+        floor: '2nd Floor',
+        room: 'ASD Administrative Suite',
         email: 'r.mendoza@office.gov',
         phone: 'Ext. 100',
         status: 'active',
         verified: '2026-10-01',
-        notes: 'Agency Executive Director'
+        notes: 'Administrative and Support Division Chief'
       },
       {
         // Status on leave
         name: 'OCAMPO, Teresa V.',
         position: 'Senior Accountant',
-        unitCode: 'FIN',
-        floor: '3rd Floor',
-        room: 'Finance Rm 301',
+        unitCode: 'ASD',
+        floor: '2nd Floor',
+        room: 'Finance & Budget Office 204',
         email: 't.ocampo@office.gov',
         phone: 'Ext. 312',
         status: 'on leave',
         verified: '2026-06-18',
-        notes: 'Maternity leave until Nov 2026'
+        notes: 'Maternity leave through Nov 2026'
       },
       {
-        // Location mismatch for soft warning demo: IT unit default is 2nd Floor, but stationed at 4th Floor!
+        // Location mismatch for soft warning demo: TEID default floor is 3rd Floor, but stationed at 4th Floor!
         name: 'VILLANUEVA, Gabriel L.',
-        position: 'IT Support Specialist',
-        unitCode: 'IT',
+        position: 'Traffic Signal Specialist',
+        unitCode: 'TEID',
         floor: '4th Floor',
-        room: 'Room 408',
+        room: 'TPMD Urban Transport Bay',
         email: 'g.villanueva@office.gov',
         phone: 'Ext. 552',
         status: 'active',
         verified: '2026-09-12',
-        notes: 'Deployed to 4th floor project office for tech support'
+        notes: 'Cross-assigned to 4th floor inter-agency task team'
       },
       {
         // Missing both position and unit -> needs_review = 1
@@ -360,34 +358,35 @@ function seedData() {
         phone: 'Ext. 210',
         status: 'active',
         verified: null,
-        notes: 'Newly appointed contractual staff, details incomplete'
+        notes: 'Newly onboarded personnel, details incomplete'
       },
       {
         // Status detached
         name: 'CRUZ, Dennis F.',
-        position: 'Logistics Coordinator',
-        unitCode: 'GSD',
-        floor: 'Basement',
-        room: 'Supply Warehouse',
+        position: 'Traffic Enforcement Supervisor',
+        unitCode: 'TESMD',
+        floor: 'Ground Floor',
+        room: 'TESMD Dispatch Station',
         email: 'd.cruz@office.gov',
         phone: 'Ext. 120',
         status: 'detached',
         verified: '2026-05-04',
-        notes: 'Detached to regional emergency task force'
+        notes: 'Detached to regional inter-agency traffic task group'
       },
       {
         name: 'FERNANDEZ, Clara T.',
-        position: 'Human Resource Officer I',
-        unitCode: 'HR',
+        position: 'Human Resource Management Officer I',
+        unitCode: 'ASD',
         floor: '2nd Floor',
-        room: 'HR Bay 2',
+        room: 'ASD Human Resource Bay',
         email: 'c.fernandez@office.gov',
         phone: 'Ext. 105',
         status: 'active',
         verified: '2026-09-22',
-        notes: 'Training and talent development lead'
+        notes: 'Personnel records, training coordinator'
       }
     ];
+
 
     for (const emp of rawEmployees) {
       const u = getUnitInfo(emp.unitCode);
