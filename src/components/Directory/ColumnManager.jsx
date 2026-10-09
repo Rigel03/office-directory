@@ -40,23 +40,23 @@ export function ColumnManager({ columns, onColumnsChange }) {
       <button
         type="button"
         onClick={() => setShowModal(true)}
-        className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+        className="h-9 inline-flex items-center gap-1.5 px-3 text-xs font-semibold rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
         title="Choose what columns to show and move table column order"
       >
-        <Columns3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+        <Columns3 className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300 shrink-0" />
         <span className="hidden sm:inline">Columns</span>
       </button>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-xl max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-zinc-950 rounded-xl max-w-sm w-full shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-5 py-3.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/60">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
                 Customize Table Columns
               </h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 shrink-0 p-1 rounded-md"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -109,11 +109,11 @@ export function ColumnManager({ columns, onColumnsChange }) {
               ))}
             </div>
 
-            <div className="px-5 py-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="px-5 py-3 bg-zinc-50 dark:bg-zinc-900/60 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
               <button
                 type="button"
                 onClick={resetDefaultColumns}
-                className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
+                className="flex items-center gap-1 text-[11px] font-semibold text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white cursor-pointer shrink-0"
               >
                 <RotateCcw className="w-3 h-3" />
                 Reset Columns
@@ -121,7 +121,7 @@ export function ColumnManager({ columns, onColumnsChange }) {
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs cursor-pointer"
+                className="h-8 px-4 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-lg shadow-xs cursor-pointer shrink-0 whitespace-nowrap"
               >
                 Done
               </button>

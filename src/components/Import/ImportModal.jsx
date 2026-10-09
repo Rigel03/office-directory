@@ -141,47 +141,47 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-white dark:bg-zinc-950 rounded-xl max-w-4xl w-full shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden my-8 flex flex-col max-h-[90vh]">
         {/* Header with wizard step indicator */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/60">
           <div>
             <div className="flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-indigo-600" />
-              <h3 className="text-base font-semibold text-slate-900">
+              <FileSpreadsheet className="w-5 h-5 text-zinc-900 dark:text-white" />
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">
                 Import Employees from Spreadsheet
               </h3>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               Normalizes names to standard "LAST, First M.", flags missing positions, and detects duplicates.
             </p>
           </div>
           <button
             onClick={handleClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60"
+            className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Step Progress Bar */}
-        <div className="px-6 py-2.5 bg-indigo-50/40 border-b border-slate-200 flex items-center justify-between text-xs font-medium text-slate-600">
-          <span className={step === 'upload' ? 'text-indigo-600 font-bold' : ''}>1. Select Data</span>
-          <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className={step === 'mapping' ? 'text-indigo-600 font-bold' : ''}>2. Map Columns</span>
-          <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className={step === 'duplicates' ? 'text-indigo-600 font-bold' : ''}>3. Resolve Duplicates</span>
-          <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className={step === 'review' ? 'text-indigo-600 font-bold' : ''}>4. Review & Fix Fields</span>
-          <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className={step === 'success' ? 'text-emerald-600 font-bold' : ''}>5. Done</span>
+        <div className="px-6 py-2.5 bg-zinc-100/60 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-zinc-400 overflow-x-auto">
+          <span className={`shrink-0 whitespace-nowrap ${step === 'upload' ? 'text-zinc-950 dark:text-white font-bold' : ''}`}>1. Select Data</span>
+          <ArrowRight className="w-3.5 h-3.5 text-zinc-400 shrink-0 mx-1" />
+          <span className={`shrink-0 whitespace-nowrap ${step === 'mapping' ? 'text-zinc-950 dark:text-white font-bold' : ''}`}>2. Map Columns</span>
+          <ArrowRight className="w-3.5 h-3.5 text-zinc-400 shrink-0 mx-1" />
+          <span className={`shrink-0 whitespace-nowrap ${step === 'duplicates' ? 'text-zinc-950 dark:text-white font-bold' : ''}`}>3. Resolve Duplicates</span>
+          <ArrowRight className="w-3.5 h-3.5 text-zinc-400 shrink-0 mx-1" />
+          <span className={`shrink-0 whitespace-nowrap ${step === 'review' ? 'text-zinc-950 dark:text-white font-bold' : ''}`}>4. Review & Fix Fields</span>
+          <ArrowRight className="w-3.5 h-3.5 text-zinc-400 shrink-0 mx-1" />
+          <span className={`shrink-0 whitespace-nowrap ${step === 'success' ? 'text-zinc-950 dark:text-white font-bold' : ''}`}>5. Done</span>
         </div>
 
         {/* Content Body */}
         <div className="p-6 flex-1 overflow-y-auto">
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-700">
-              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div className="mb-4 p-3 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 flex items-start gap-2.5 text-xs text-zinc-900 dark:text-zinc-100">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
               <span>{error}</span>
             </div>
           )}
@@ -190,12 +190,12 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
           {step === 'upload' && (
             <div className="space-y-6">
               {/* File Dropzone */}
-              <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-indigo-500 transition-colors bg-slate-50/50">
-                <Upload className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                <p className="text-sm font-semibold text-slate-800">
+              <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl p-8 text-center hover:border-zinc-500 transition-colors bg-zinc-50/50 dark:bg-zinc-900/30">
+                <Upload className="w-10 h-10 text-zinc-400 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
                   Choose an Excel or CSV file
                 </p>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                   Supports .xlsx, .xls, and .csv files from office spreadsheets
                 </p>
                 <input
@@ -212,12 +212,12 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                 />
                 <label
                   htmlFor="import-file"
-                  className="mt-4 inline-flex items-center px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer shadow-xs"
+                  className="mt-4 inline-flex items-center px-4 py-2 text-xs font-semibold rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 border border-zinc-900 dark:border-white cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
                 >
                   Browse File
                 </label>
                 {file && (
-                  <p className="mt-2 text-xs font-medium text-emerald-600">
+                  <p className="mt-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
                     Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
                   </p>
                 )}
@@ -226,13 +226,13 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
               {/* Or Paste Data */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-slate-700">
+                  <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     Or paste rows directly from Excel / CSV:
                   </label>
                   <button
                     type="button"
                     onClick={loadSampleMessyData}
-                    className="text-xs font-medium text-indigo-600 hover:text-indigo-800 underline cursor-pointer"
+                    className="text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white underline cursor-pointer shrink-0 whitespace-nowrap"
                   >
                     Load Sample Test Spreadsheet
                   </button>
@@ -245,7 +245,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                     setFile(null);
                   }}
                   placeholder="Paste headers and rows here (e.g. Employee Name, Designation, Department...)"
-                  className="w-full p-3 font-mono text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-white"
+                  className="w-full p-3 font-mono text-xs border border-zinc-300 dark:border-zinc-700 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white"
                 />
               </div>
 
@@ -254,10 +254,10 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                   type="button"
                   disabled={loading || (!file && !pastedData.trim())}
                   onClick={() => handleProcessPreview()}
-                  className="flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer shadow-xs"
+                  className="h-9 inline-flex items-center gap-2 px-5 text-xs font-semibold rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 border border-zinc-900 dark:border-white disabled:opacity-50 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
                 >
                   {loading ? 'Analyzing columns...' : 'Next: Map Columns'}
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 shrink-0" />
                 </button>
               </div>
             </div>
@@ -266,7 +266,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
           {/* STEP 2: Column Mapping */}
           {step === 'mapping' && previewData && (
             <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+              <div className="bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 text-xs text-zinc-800 dark:text-zinc-200">
                 Confirm which columns in your spreadsheet correspond to our standard directory fields.
                 We have automatically pre-mapped the best matches found.
               </div>
@@ -282,14 +282,14 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                   { field: 'status', label: 'Employment Status', required: false },
                   { field: 'notes', label: 'Notes / Remarks', required: false }
                 ].map(({ field, label, required }) => (
-                  <div key={field} className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      {label} {required && <span className="text-rose-500">*</span>}
+                  <div key={field} className="p-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-lg">
+                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                      {label} {required && <span className="text-zinc-900 dark:text-white font-bold">*</span>}
                     </label>
                     <select
                       value={columnMapping[field] || ''}
                       onChange={(e) => setColumnMapping({ ...columnMapping, [field]: e.target.value })}
-                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-md text-zinc-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white"
                     >
                       <option value="">(None / Skip)</option>
                       {previewData.headers.map(h => (
@@ -300,11 +300,11 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                 ))}
               </div>
 
-              <div className="flex justify-between pt-4 border-t border-slate-100">
+              <div className="flex justify-between items-center pt-4 border-t border-zinc-200 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setStep('upload')}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 rounded-lg"
+                  className="h-9 px-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                 >
                   Back
                 </button>
@@ -312,10 +312,10 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                   type="button"
                   disabled={!columnMapping.full_name || loading}
                   onClick={handleApplyMapping}
-                  className="flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer shadow-xs"
+                  className="h-9 inline-flex items-center gap-2 px-5 text-xs font-semibold rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 border border-zinc-900 dark:border-white disabled:opacity-50 cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
                 >
                   {loading ? 'Evaluating...' : 'Next: Check Duplicates & Fields'}
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 shrink-0" />
                 </button>
               </div>
             </div>
@@ -324,11 +324,11 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
           {/* STEP 3: Duplicate Resolution */}
           {step === 'duplicates' && previewData && (
             <div className="space-y-4">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-start gap-2.5">
-                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <div className="bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 text-xs text-zinc-800 dark:text-zinc-200 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-semibold">Likely duplicate employee records detected</p>
-                  <p className="mt-0.5">
+                  <p className="font-bold">Likely duplicate employee records detected</p>
+                  <p className="mt-0.5 text-zinc-600 dark:text-zinc-400">
                     We detected similarity between candidate rows and existing database records.
                     Choose whether to merge data into the existing profile, keep as a separate new entry, or skip.
                   </p>
@@ -341,68 +341,68 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                   const topDupe = r.duplicates[0];
 
                   return (
-                    <div key={r.rowIndex} className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3">
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                        <span className="text-xs font-bold text-slate-900">
+                    <div key={r.rowIndex} className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 bg-white dark:bg-zinc-900 shadow-2xs space-y-3">
+                      <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                        <span className="text-xs font-bold text-zinc-900 dark:text-white">
                           Row #{r.rowIndex}: {r.normalized.full_name}
                         </span>
-                        <span className="text-[11px] font-semibold px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full">
+                        <span className="text-[11px] font-semibold px-2 py-0.5 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 rounded-full border border-zinc-300 dark:border-zinc-700">
                           {topDupe.score}% match ({topDupe.reasons})
                         </span>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Incoming Row</p>
-                          <p className="font-semibold text-slate-800">{r.normalized.full_name}</p>
-                          <p className="text-slate-600">Pos: {r.normalized.position || '(None)'}</p>
-                          <p className="text-slate-600">Unit: {r.normalized.unit || '(None)'}</p>
-                          <p className="text-slate-500 text-[11px]">Email: {r.normalized.email || '—'}</p>
+                        <div className="p-2.5 bg-zinc-50 dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                          <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Incoming Row</p>
+                          <p className="font-semibold text-zinc-900 dark:text-white">{r.normalized.full_name}</p>
+                          <p className="text-zinc-600 dark:text-zinc-400">Pos: {r.normalized.position || '(None)'}</p>
+                          <p className="text-zinc-600 dark:text-zinc-400">Unit: {r.normalized.unit || '(None)'}</p>
+                          <p className="text-zinc-500 text-[11px]">Email: {r.normalized.email || '—'}</p>
                         </div>
 
-                        <div className="p-2.5 bg-indigo-50/50 rounded-lg border border-indigo-200">
-                          <p className="text-[10px] font-bold text-indigo-400 uppercase mb-1">Existing Database Record</p>
-                          <p className="font-semibold text-indigo-950">{topDupe.existingName}</p>
-                          <p className="text-slate-600">Pos: {topDupe.existingPosition || '(None)'}</p>
-                          <p className="text-slate-600">Unit: {topDupe.existingUnit || '(None)'}</p>
+                        <div className="p-2.5 bg-zinc-50 dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                          <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Existing Database Record</p>
+                          <p className="font-semibold text-zinc-900 dark:text-white">{topDupe.existingName}</p>
+                          <p className="text-zinc-600 dark:text-zinc-400">Pos: {topDupe.existingPosition || '(None)'}</p>
+                          <p className="text-zinc-600 dark:text-zinc-400">Unit: {topDupe.existingUnit || '(None)'}</p>
                         </div>
                       </div>
 
                       {/* User Choice */}
-                      <div className="flex items-center gap-3 pt-1 text-xs">
-                        <label className="flex items-center gap-1.5 cursor-pointer font-medium text-indigo-700">
+                      <div className="flex flex-wrap items-center gap-4 pt-1 text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer font-medium text-zinc-900 dark:text-white shrink-0">
                           <input
                             type="radio"
                             name={`decision-${r.rowIndex}`}
                             checked={action === 'merge'}
                             onChange={() => setRowDecision(r.rowIndex, 'merge', topDupe.existingId)}
-                            className="text-indigo-600"
+                            className="text-zinc-900 focus:ring-zinc-900"
                           />
-                          <GitMerge className="w-3.5 h-3.5 text-indigo-600" />
+                          <GitMerge className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300 shrink-0" />
                           Confirm Merge (Fill empty fields in existing profile)
                         </label>
 
-                        <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700">
+                        <label className="flex items-center gap-1.5 cursor-pointer font-medium text-zinc-700 dark:text-zinc-300 shrink-0">
                           <input
                             type="radio"
                             name={`decision-${r.rowIndex}`}
                             checked={action === 'create'}
                             onChange={() => setRowDecision(r.rowIndex, 'create', null)}
-                            className="text-slate-600"
+                            className="text-zinc-900 focus:ring-zinc-900"
                           />
-                          <UserPlus className="w-3.5 h-3.5 text-slate-500" />
+                          <UserPlus className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
                           Keep Separate as New
                         </label>
 
-                        <label className="flex items-center gap-1.5 cursor-pointer font-medium text-rose-700">
+                        <label className="flex items-center gap-1.5 cursor-pointer font-medium text-zinc-500 dark:text-zinc-400 shrink-0">
                           <input
                             type="radio"
                             name={`decision-${r.rowIndex}`}
                             checked={action === 'skip'}
                             onChange={() => setRowDecision(r.rowIndex, 'skip', null)}
-                            className="text-rose-600"
+                            className="text-zinc-900 focus:ring-zinc-900"
                           />
-                          <SkipForward className="w-3.5 h-3.5 text-rose-500" />
+                          <SkipForward className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                           Skip Row
                         </label>
                       </div>
@@ -411,21 +411,21 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                 })}
               </div>
 
-              <div className="flex justify-between pt-4 border-t border-slate-100">
+              <div className="flex justify-between items-center pt-4 border-t border-zinc-200 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setStep('mapping')}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 rounded-lg"
+                  className="h-9 px-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                 >
                   Back to Mapping
                 </button>
                 <button
                   type="button"
                   onClick={() => setStep('review')}
-                  className="flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer shadow-xs"
+                  className="h-9 inline-flex items-center gap-2 px-5 text-xs font-semibold rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 border border-zinc-900 dark:border-white cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
                 >
                   Next: Review Missing Fields
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 shrink-0" />
                 </button>
               </div>
             </div>
@@ -434,22 +434,22 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
           {/* STEP 4: Review Screen (Missing fields & inline fixes) */}
           {step === 'review' && previewData && (
             <div className="space-y-4">
-              <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-xs text-rose-800 flex items-start gap-2.5">
-                <ShieldAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <div className="bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 text-xs text-zinc-900 dark:text-zinc-100 flex items-start gap-2.5">
+                <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-semibold">
+                  <p className="font-bold">
                     Review Screen: {previewData.missingInfoCount} row(s) missing required fields
                   </p>
-                  <p className="mt-0.5">
+                  <p className="mt-0.5 text-zinc-600 dark:text-zinc-400">
                     Per policy, employees require Position and Unit. You can supply them below now, or import anyway
                     (they will be clearly tagged with <span className="font-bold underline">"Needs Review"</span> in the directory).
                   </p>
                 </div>
               </div>
 
-              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+              <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] font-semibold">
+                  <thead className="bg-zinc-50 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 uppercase text-[10px] font-bold">
                     <tr>
                       <th className="py-2.5 px-3 w-12">#</th>
                       <th className="py-2.5 px-3 min-w-[180px]">Normalized Name</th>
@@ -459,7 +459,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                       <th className="py-2.5 px-3 w-28">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                     {previewData.rows.map(r => {
                       const cur = rowActions[r.rowIndex] || { action: 'create', data: r.normalized };
                       const isMissingPos = !cur.data.position || cur.data.position.trim() === '';
@@ -468,15 +468,15 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                       return (
                         <tr
                           key={r.rowIndex}
-                          className={`hover:bg-slate-50/70 transition-colors ${
-                            (isMissingPos || isMissingUnit) ? 'bg-rose-50/30' : ''
+                          className={`hover:bg-zinc-50/70 dark:hover:bg-zinc-900/40 transition-colors ${
+                            (isMissingPos || isMissingUnit) ? 'bg-zinc-100/50 dark:bg-zinc-900/60' : ''
                           }`}
                         >
-                          <td className="py-2.5 px-3 font-mono text-slate-400">{r.rowIndex}</td>
-                          <td className="py-2.5 px-3 font-semibold text-slate-900">
+                          <td className="py-2.5 px-3 font-mono text-zinc-400">{r.rowIndex}</td>
+                          <td className="py-2.5 px-3 font-semibold text-zinc-900 dark:text-white">
                             {cur.data.full_name}
                             {(isMissingPos || isMissingUnit) && (
-                              <span className="block text-[10px] font-semibold text-rose-600">
+                              <span className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
                                 Incomplete Record
                               </span>
                             )}
@@ -489,9 +489,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                               value={cur.data.position || ''}
                               onChange={(e) => updateRowField(r.rowIndex, 'position', e.target.value)}
                               placeholder="Fill position..."
-                              className={`w-full px-2 py-1 text-xs rounded border ${
-                                isMissingPos ? 'border-rose-300 bg-rose-50/40 text-rose-700' : 'border-slate-300'
-                              } focus:ring-1 focus:ring-indigo-500`}
+                              className="w-full px-2 py-1 text-xs rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-1 focus:ring-zinc-900 dark:focus:ring-white"
                             />
                           </td>
 
@@ -502,12 +500,10 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                               value={cur.data.unit || ''}
                               onChange={(e) => updateRowField(r.rowIndex, 'unit', e.target.value)}
                               placeholder="Fill unit..."
-                              className={`w-full px-2 py-1 text-xs rounded border ${
-                                isMissingUnit ? 'border-rose-300 bg-rose-50/40 text-rose-700' : 'border-slate-300 dark:border-slate-700 dark:bg-slate-800'
-                              } focus:ring-1 focus:ring-indigo-500`}
+                              className="w-full px-2 py-1 text-xs rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-1 focus:ring-zinc-900 dark:focus:ring-white"
                             />
                             {r.unmatchedUnit && (
-                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium block mt-0.5">
+                              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium block mt-0.5">
                                 Unmatched managed unit
                               </span>
                             )}
@@ -516,12 +512,12 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                           {/* Location with Floor & Room */}
                           <td className="py-2.5 px-3">
                             <div className="flex flex-col gap-1">
-                              <span className="text-slate-700 dark:text-slate-300 font-medium">
+                              <span className="text-zinc-800 dark:text-zinc-200 font-medium">
                                 {cur.data.location || '—'}
                               </span>
                               {r.unmatchedLocation && (
-                                <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                                  <AlertTriangle className="w-3 h-3 text-amber-500" />
+                                <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
+                                  <AlertTriangle className="w-3 h-3 text-zinc-400" />
                                   Unmatched raw: "{r.normalized.raw_location}"
                                 </span>
                               )}
@@ -530,11 +526,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
 
                           {/* Action */}
                           <td className="py-2.5 px-3">
-                            <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-semibold ${
-                              cur.action === 'merge' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300' :
-                              cur.action === 'skip' ? 'bg-slate-100 text-slate-600 line-through dark:bg-slate-800 dark:text-slate-400' :
-                              'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                            }`}>
+                            <span className="inline-flex px-2 py-0.5 rounded text-[11px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700">
                               {cur.action}
                             </span>
                           </td>
@@ -546,11 +538,11 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                 </table>
               </div>
 
-              <div className="flex justify-between pt-4 border-t border-slate-100">
+              <div className="flex justify-between items-center pt-4 border-t border-zinc-200 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setStep(previewData.duplicateCount > 0 ? 'duplicates' : 'mapping')}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 rounded-lg"
+                  className="h-9 px-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                 >
                   Back
                 </button>
@@ -558,10 +550,10 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                   type="button"
                   disabled={loading}
                   onClick={handleCommit}
-                  className="flex items-center gap-2 px-6 py-2.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer shadow-xs disabled:opacity-50"
+                  className="h-9 inline-flex items-center gap-2 px-6 text-xs font-semibold rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 border border-zinc-900 dark:border-white cursor-pointer shadow-xs disabled:opacity-50 shrink-0 whitespace-nowrap"
                 >
                   {loading ? 'Committing...' : 'Commit Import to Directory'}
-                  <CheckCircle className="w-4 h-4" />
+                  <CheckCircle className="w-4 h-4 shrink-0" />
                 </button>
               </div>
             </div>
@@ -570,26 +562,26 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
           {/* STEP 5: Success Confirmation */}
           {step === 'success' && commitResult && (
             <div className="text-center py-8 space-y-4">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white flex items-center justify-center mx-auto border border-zinc-300 dark:border-zinc-700">
                 <CheckCircle className="w-8 h-8" />
               </div>
-              <h4 className="text-lg font-bold text-slate-900">Import Completed Successfully</h4>
-              <p className="text-xs text-slate-600 max-w-md mx-auto">
+              <h4 className="text-lg font-bold text-zinc-900 dark:text-white">Import Completed Successfully</h4>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-md mx-auto">
                 The spreadsheet rows have been verified and processed into the directory database.
               </p>
 
               <div className="flex justify-center gap-6 py-4">
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl min-w-[120px]">
-                  <p className="text-2xl font-bold text-emerald-600">{commitResult.createdCount}</p>
-                  <p className="text-xs text-slate-500 font-medium">New Employees</p>
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl min-w-[120px]">
+                  <p className="text-2xl font-bold text-zinc-900 dark:text-white">{commitResult.createdCount}</p>
+                  <p className="text-xs text-zinc-500 font-medium">New Employees</p>
                 </div>
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl min-w-[120px]">
-                  <p className="text-2xl font-bold text-indigo-600">{commitResult.mergedCount}</p>
-                  <p className="text-xs text-slate-500 font-medium">Merged Records</p>
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl min-w-[120px]">
+                  <p className="text-2xl font-bold text-zinc-900 dark:text-white">{commitResult.mergedCount}</p>
+                  <p className="text-xs text-zinc-500 font-medium">Merged Records</p>
                 </div>
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl min-w-[120px]">
-                  <p className="text-2xl font-bold text-slate-500">{commitResult.skippedCount}</p>
-                  <p className="text-xs text-slate-500 font-medium">Skipped</p>
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl min-w-[120px]">
+                  <p className="text-2xl font-bold text-zinc-400">{commitResult.skippedCount}</p>
+                  <p className="text-xs text-zinc-500 font-medium">Skipped</p>
                 </div>
               </div>
 
@@ -597,7 +589,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="px-6 py-2.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs cursor-pointer"
+                  className="h-10 px-6 text-xs font-semibold rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 border border-zinc-900 dark:border-white shadow-xs cursor-pointer shrink-0 whitespace-nowrap"
                 >
                   View Updated Directory
                 </button>

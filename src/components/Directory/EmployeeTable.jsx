@@ -145,17 +145,17 @@ export function EmployeeTable({
 
                 {/* Group Chips: show first + "+N" when multiple (Spec 6) */}
                 {emp.groups && emp.groups.length > 0 && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 shrink-0">
                     <span
                       title={emp.groups.map(g => g.name).join(', ')}
-                      className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                      className="px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 whitespace-nowrap"
                     >
                       {emp.groups[0].name}
                     </span>
                     {emp.groups.length > 1 && (
                       <span
                         title={emp.groups.slice(1).map(g => g.name).join(', ')}
-                        className="px-1 py-0.2 rounded text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 cursor-help"
+                        className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-600 cursor-help whitespace-nowrap"
                       >
                         +{emp.groups.length - 1}
                       </span>
@@ -178,13 +178,13 @@ export function EmployeeTable({
                   value={editingCell.value}
                   onChange={(e) => setEditingCell({ ...editingCell, value: e.target.value })}
                   onKeyDown={handleKeyDownInline}
-                  className="px-2 py-1 text-xs border border-indigo-500 dark:border-indigo-400 rounded bg-white dark:bg-slate-800 dark:text-white shadow-xs w-full focus:outline-hidden"
+                  className="px-2 py-1 text-xs border border-zinc-900 dark:border-white rounded bg-white dark:bg-zinc-800 dark:text-white shadow-xs w-full focus:outline-hidden"
                   placeholder="Enter position..."
                 />
                 <button
                   type="button"
                   onClick={handleSaveInline}
-                  className="p-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer"
+                  className="p-1 rounded bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 cursor-pointer shrink-0"
                   title="Save position"
                 >
                   <Check className="w-3.5 h-3.5" />
@@ -192,7 +192,7 @@ export function EmployeeTable({
                 <button
                   type="button"
                   onClick={() => setEditingCell(null)}
-                  className="p-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
+                  className="p-1 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600 cursor-pointer shrink-0"
                   title="Cancel"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -205,7 +205,7 @@ export function EmployeeTable({
                     type="button"
                     onClick={() => handleStartInline(emp, 'position')}
                     title="Missing Position — Click to set position inline"
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-zinc-100 text-zinc-900 border border-zinc-300 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-600 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer whitespace-nowrap shrink-0"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Set Position</span>
@@ -213,7 +213,7 @@ export function EmployeeTable({
                 ) : (
                   <span
                     onDoubleClick={() => handleStartInline(emp, 'position')}
-                    className="text-slate-800 dark:text-slate-200 font-medium"
+                    className="text-zinc-900 dark:text-zinc-100 font-medium"
                   >
                     {emp.position}
                   </span>
@@ -223,7 +223,7 @@ export function EmployeeTable({
                   <button
                     type="button"
                     onClick={() => handleStartInline(emp, 'position')}
-                    className="opacity-0 group-hover/cell:opacity-100 p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-opacity ml-1 cursor-pointer"
+                    className="opacity-0 group-hover/cell:opacity-100 p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-opacity ml-1 cursor-pointer shrink-0"
                     title="Inline edit position"
                   >
                     <Edit2 className="w-3 h-3" />
@@ -245,13 +245,13 @@ export function EmployeeTable({
                   value={editingCell.value}
                   onChange={(e) => setEditingCell({ ...editingCell, value: e.target.value })}
                   onKeyDown={handleKeyDownInline}
-                  className="px-2 py-1 text-xs border border-indigo-500 dark:border-indigo-400 rounded bg-white dark:bg-slate-800 dark:text-white shadow-xs w-full focus:outline-hidden"
+                  className="px-2 py-1 text-xs border border-zinc-900 dark:border-white rounded bg-white dark:bg-zinc-800 dark:text-white shadow-xs w-full focus:outline-hidden"
                   placeholder="Enter unit..."
                 />
                 <button
                   type="button"
                   onClick={handleSaveInline}
-                  className="p-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer"
+                  className="p-1 rounded bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 cursor-pointer shrink-0"
                   title="Save unit"
                 >
                   <Check className="w-3.5 h-3.5" />
@@ -259,7 +259,7 @@ export function EmployeeTable({
                 <button
                   type="button"
                   onClick={() => setEditingCell(null)}
-                  className="p-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
+                  className="p-1 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600 cursor-pointer shrink-0"
                   title="Cancel"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -272,7 +272,7 @@ export function EmployeeTable({
                     type="button"
                     onClick={() => handleStartInline(emp, 'unit')}
                     title="Missing Unit / Division — Click to set unit inline"
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-zinc-100 text-zinc-900 border border-zinc-300 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-600 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer whitespace-nowrap shrink-0"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Set Unit</span>
@@ -283,7 +283,7 @@ export function EmployeeTable({
                     <span
                       title={emp.unit}
                       onDoubleClick={() => handleStartInline(emp, 'unit')}
-                      className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-help"
+                      className="px-2 py-0.5 rounded text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 cursor-help"
                     >
                       {emp.unit_code || emp.unit}
                     </span>
@@ -292,7 +292,7 @@ export function EmployeeTable({
                     {emp.location_mismatch && (
                       <span
                         title={`Notice: Usual location for ${emp.unit_code || emp.unit} is ${emp.expected_floor}. (Employee floor: ${emp.floor || emp.location})`}
-                        className="text-amber-500 dark:text-amber-400 cursor-help inline-flex items-center"
+                        className="text-zinc-500 dark:text-zinc-400 cursor-help inline-flex items-center"
                       >
                         <AlertTriangle className="w-3.5 h-3.5" />
                       </span>
@@ -304,7 +304,7 @@ export function EmployeeTable({
                   <button
                     type="button"
                     onClick={() => handleStartInline(emp, 'unit')}
-                    className="opacity-0 group-hover/cell:opacity-100 p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-opacity ml-1 cursor-pointer"
+                    className="opacity-0 group-hover/cell:opacity-100 p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-opacity ml-1 cursor-pointer shrink-0"
                     title="Inline edit unit"
                   >
                     <Edit2 className="w-3 h-3" />
@@ -371,7 +371,7 @@ export function EmployeeTable({
       <div className="overflow-x-auto max-h-[68vh] overflow-y-auto">
         <table className="w-full text-left border-collapse">
           {/* Sticky Header */}
-          <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider shadow-2xs">
+          <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider shadow-2xs">
             <tr>
               {/* Checkbox */}
               <th className="py-3 px-4 w-10">
@@ -380,7 +380,7 @@ export function EmployeeTable({
                   checked={allPageSelected}
                   ref={el => { if (el) el.indeterminate = somePageSelected; }}
                   onChange={() => onToggleSelectAll(paginatedEmployees.map(e => e.id))}
-                  className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer dark:bg-slate-800"
+                  className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500 cursor-pointer dark:bg-zinc-800"
                   aria-label="Select all on this page"
                 />
               </th>
@@ -392,7 +392,7 @@ export function EmployeeTable({
                   onClick={() => ['full_name', 'position', 'unit', 'status', 'last_verified_at'].includes(col.id) && onSort(col.id)}
                   className={`py-3 px-4 transition-colors select-none ${
                     ['full_name', 'position', 'unit', 'status', 'last_verified_at'].includes(col.id)
-                      ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/80 group'
+                      ? 'cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-700/80 group'
                       : ''
                   }`}
                 >
@@ -408,7 +408,7 @@ export function EmployeeTable({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
             {paginatedEmployees.map((emp) => {
               const isSelected = selectedIds.includes(emp.id);
               const isOverflowOpen = openOverflowId === emp.id;
@@ -416,8 +416,8 @@ export function EmployeeTable({
               return (
                 <tr
                   key={emp.id}
-                  className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
-                    isSelected ? 'bg-indigo-50/40 dark:bg-indigo-950/40' : ''
+                  className={`hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors ${
+                    isSelected ? 'bg-zinc-100/70 dark:bg-zinc-800/60' : ''
                   }`}
                 >
                   {/* Select Checkbox */}
@@ -426,7 +426,7 @@ export function EmployeeTable({
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => onToggleSelect(emp.id)}
-                      className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer dark:bg-slate-800"
+                      className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500 cursor-pointer dark:bg-zinc-800"
                       aria-label={`Select ${emp.full_name}`}
                     />
                   </td>
@@ -440,7 +440,7 @@ export function EmployeeTable({
                       <button
                         type="button"
                         onClick={() => onViewAudit(emp)}
-                        className="p-1.5 rounded-md text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
                         title="View audit trail"
                         aria-label={`Audit history for ${emp.full_name}`}
                       >
@@ -451,7 +451,7 @@ export function EmployeeTable({
                         <button
                           type="button"
                           onClick={() => onEditEmployee(emp)}
-                          className="p-1.5 rounded-md text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
                           title="Edit employee record"
                           aria-label={`Edit ${emp.full_name}`}
                         >
@@ -465,7 +465,7 @@ export function EmployeeTable({
                           <button
                             type="button"
                             onClick={() => setOpenOverflowId(isOverflowOpen ? null : emp.id)}
-                            className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
                             title="More row actions"
                             aria-label="More actions"
                           >
@@ -473,7 +473,7 @@ export function EmployeeTable({
                           </button>
 
                           {isOverflowOpen && (
-                            <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-30 text-left animate-in fade-in zoom-in-95 duration-100">
+                            <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-zinc-800 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700 py-1 z-30 text-left animate-in fade-in zoom-in-95 duration-100">
                               {!isArchivedView ? (
                                 <button
                                   type="button"
@@ -481,9 +481,9 @@ export function EmployeeTable({
                                     setOpenOverflowId(null);
                                     onArchive(emp);
                                   }}
-                                  className="w-full text-left px-3 py-2 text-xs text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-slate-700/70 flex items-center gap-2 cursor-pointer"
+                                  className="w-full text-left px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2 cursor-pointer"
                                 >
-                                  <Archive className="w-3.5 h-3.5 text-amber-500" />
+                                  <Archive className="w-3.5 h-3.5 text-zinc-500" />
                                   <span>Archive Record</span>
                                 </button>
                               ) : (
@@ -494,9 +494,9 @@ export function EmployeeTable({
                                       setOpenOverflowId(null);
                                       onRestore(emp);
                                     }}
-                                    className="w-full text-left px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-700/70 flex items-center gap-2 cursor-pointer"
+                                    className="w-full text-left px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2 cursor-pointer"
                                   >
-                                    <RotateCcw className="w-3.5 h-3.5 text-emerald-500" />
+                                    <RotateCcw className="w-3.5 h-3.5 text-zinc-500" />
                                     <span>Restore to Active</span>
                                   </button>
                                   <button
@@ -505,9 +505,9 @@ export function EmployeeTable({
                                       setOpenOverflowId(null);
                                       onDelete(emp);
                                     }}
-                                    className="w-full text-left px-3 py-2 text-xs text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-700/70 flex items-center gap-2 cursor-pointer border-t border-slate-100 dark:border-slate-700"
+                                    className="w-full text-left px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 hover:text-rose-600 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2 cursor-pointer border-t border-zinc-100 dark:border-zinc-700"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                    <Trash2 className="w-3.5 h-3.5 text-zinc-500" />
                                     <span>Delete Permanently</span>
                                   </button>
                                 </>
@@ -526,17 +526,17 @@ export function EmployeeTable({
       </div>
 
       {/* Table Footer: Density Toggle & Pagination (Spec 6) */}
-      <div className="px-4 py-3 bg-slate-50/90 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400 select-none">
+      <div className="px-4 py-3 bg-zinc-50/90 dark:bg-zinc-800/60 border-t border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-600 dark:text-zinc-400 select-none">
         {/* Left: Density Toggle & Record Count */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5 text-[11px] font-medium">
+          <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg p-0.5 text-[11px] font-medium">
             <button
               type="button"
               onClick={() => onToggleDensity && onToggleDensity('comfortable')}
-              className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+              className={`px-2.5 py-0.5 rounded cursor-pointer transition-colors shrink-0 whitespace-nowrap ${
                 !isCompact
-                  ? 'bg-indigo-50 text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 font-semibold'
-                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                  ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-2xs'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
               Comfortable
@@ -544,17 +544,17 @@ export function EmployeeTable({
             <button
               type="button"
               onClick={() => onToggleDensity && onToggleDensity('compact')}
-              className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+              className={`px-2.5 py-0.5 rounded cursor-pointer transition-colors shrink-0 whitespace-nowrap ${
                 isCompact
-                  ? 'bg-indigo-50 text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 font-semibold'
-                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                  ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-2xs'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
               }`}
             >
               Compact
             </button>
           </div>
 
-          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+          <span className="text-[11px] text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
             Showing {paginatedEmployees.length} of {employees.length} records
           </span>
         </div>
@@ -569,7 +569,7 @@ export function EmployeeTable({
                 setPageSize(e.target.value === 'all' ? 'all' : Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5 text-xs text-slate-800 dark:text-slate-200"
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-1.5 py-0.5 text-xs text-zinc-800 dark:text-zinc-200"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
@@ -584,19 +584,19 @@ export function EmployeeTable({
                 type="button"
                 disabled={validPage <= 1}
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                className="p-1 rounded text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white disabled:opacity-30 cursor-pointer"
+                className="p-1 rounded text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white disabled:opacity-30 cursor-pointer"
                 aria-label="Previous page"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 px-1">
+              <span className="text-[11px] font-medium text-zinc-700 dark:text-zinc-300 px-1 whitespace-nowrap">
                 {validPage} / {totalPages}
               </span>
               <button
                 type="button"
                 disabled={validPage >= totalPages}
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                className="p-1 rounded text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white disabled:opacity-30 cursor-pointer"
+                className="p-1 rounded text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white disabled:opacity-30 cursor-pointer"
                 aria-label="Next page"
               >
                 <ChevronRight className="w-4 h-4" />

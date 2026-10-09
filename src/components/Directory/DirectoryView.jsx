@@ -369,7 +369,7 @@ export function DirectoryView({ onNavigateToUnits }) {
   return (
     <div className="space-y-4">
       {/* 1. QUICK VIEWS TAB ROW (Spec 4) */}
-      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1">
           {QUICK_TABS.map((tab) => {
             const isActive = activeTab === tab.id;
@@ -382,19 +382,19 @@ export function DirectoryView({ onNavigateToUnits }) {
                   setActiveTab(tab.id);
                   if (tab.id !== 'all') setSelectedStatus('');
                 }}
-                className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-xs font-bold'
+                    : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                 }`}
               >
                 <span>{tab.label}</span>
                 <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
                   isActive
-                    ? 'bg-indigo-700 text-indigo-100'
+                    ? 'bg-zinc-700 text-zinc-100 dark:bg-zinc-200 dark:text-zinc-900'
                     : tab.isAlert
-                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
                 }`}>
                   {tab.count}
                 </span>
@@ -405,16 +405,16 @@ export function DirectoryView({ onNavigateToUnits }) {
       </div>
 
       {/* 2. RESPONSIVE TOOLBAR (Spec 9) */}
-      <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors">
+      <div className="bg-white dark:bg-zinc-900 p-3 sm:p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors">
         {/* Search Input */}
         <div className="relative flex-1 min-w-[220px] max-w-md">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" />
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400 dark:text-zinc-500" />
           <input
             type="text"
             placeholder="Search name, position, unit, location, email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+            className="w-full h-9 pl-9 pr-3 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-zinc-500"
           />
         </div>
 
@@ -428,30 +428,30 @@ export function DirectoryView({ onNavigateToUnits }) {
             <button
               type="button"
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              className="h-9 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 transition-colors cursor-pointer whitespace-nowrap shrink-0"
               title="Export filtered directory"
             >
-              <Download className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <Download className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
               <span>Export</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <ChevronDown className="w-3 h-3 text-zinc-400" />
             </button>
 
             {showExportMenu && (
-              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-30 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-800 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700 py-1 z-30 animate-in fade-in zoom-in-95 duration-100">
                 <button
                   type="button"
                   onClick={() => handleExport('xlsx')}
-                  className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer"
+                  className="w-full text-left px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2 cursor-pointer"
                 >
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <FileSpreadsheet className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
                   <span>Export to Excel (.xlsx)</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleExport('csv')}
-                  className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer border-t border-slate-100 dark:border-slate-700"
+                  className="w-full text-left px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2 cursor-pointer border-t border-zinc-100 dark:border-zinc-700"
                 >
-                  <FileText className="w-4 h-4 text-sky-600" />
+                  <FileText className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
                   <span>Export to CSV (.csv)</span>
                 </button>
               </div>
@@ -463,10 +463,10 @@ export function DirectoryView({ onNavigateToUnits }) {
             <button
               type="button"
               onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer shadow-2xs"
+              className="h-9 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
             >
-              <Upload className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
-              <span className="hidden sm:inline">Import Spreadsheet</span>
+              <Upload className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
+              <span>Import Spreadsheet</span>
             </button>
           )}
 
@@ -478,7 +478,7 @@ export function DirectoryView({ onNavigateToUnits }) {
                 setEditingEmployee(null);
                 setShowEmployeeModal(true);
               }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs cursor-pointer"
+              className="h-9 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
             >
               <Plus className="w-4 h-4" />
               <span>New Employee</span>
@@ -488,9 +488,9 @@ export function DirectoryView({ onNavigateToUnits }) {
       </div>
 
       {/* 3. FILTER RIBBON (Spec 3 & 4) */}
-      <div className="bg-slate-50/80 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs flex-wrap transition-colors">
+      <div className="bg-zinc-50/80 dark:bg-zinc-900/60 p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3 text-xs flex-wrap transition-colors">
         <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-semibold">
+          <div className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400 font-semibold shrink-0">
             <Filter className="w-3.5 h-3.5" />
             <span>Filters:</span>
           </div>
@@ -500,7 +500,7 @@ export function DirectoryView({ onNavigateToUnits }) {
             <select
               value={selectedUnit}
               onChange={(e) => setSelectedUnit(e.target.value)}
-              className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 font-medium"
+              className="h-8 px-2.5 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-800 dark:text-zinc-200 font-medium text-xs"
             >
               <option value="">All Units / Divisions</option>
               {units.map(u => (
@@ -514,7 +514,7 @@ export function DirectoryView({ onNavigateToUnits }) {
                 type="button"
                 onClick={onNavigateToUnits}
                 title="Manage Units & Divisions"
-                className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg"
+                className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg shrink-0"
               >
                 <Building2 className="w-3.5 h-3.5" />
               </button>
@@ -525,7 +525,7 @@ export function DirectoryView({ onNavigateToUnits }) {
           <select
             value={selectedGroupId}
             onChange={(e) => setSelectedGroupId(e.target.value)}
-            className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 font-medium"
+            className="h-8 px-2.5 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-800 dark:text-zinc-200 font-medium text-xs"
           >
             <option value="">All Groups</option>
             {groups.map(g => (
@@ -538,7 +538,7 @@ export function DirectoryView({ onNavigateToUnits }) {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 font-medium"
+              className="h-8 px-2.5 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-800 dark:text-zinc-200 font-medium text-xs"
             >
               <option value="">All Statuses</option>
               <option value="active">Active</option>
@@ -552,7 +552,7 @@ export function DirectoryView({ onNavigateToUnits }) {
             <button
               type="button"
               onClick={handleClearFilters}
-              className="flex items-center gap-1 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold px-2 py-1 rounded hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
+              className="h-8 inline-flex items-center gap-1 text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white font-semibold px-2 rounded hover:bg-zinc-200/60 dark:hover:bg-zinc-800 cursor-pointer whitespace-nowrap shrink-0"
             >
               <RotateCcw className="w-3 h-3" />
               Reset Filters

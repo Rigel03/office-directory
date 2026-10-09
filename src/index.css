@@ -5,38 +5,69 @@
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Minimalist Black and White Monochromatic Palette */
+  --color-slate-50: #fafafa;
+  --color-slate-100: #f4f4f5;
+  --color-slate-200: #e4e4e7;
+  --color-slate-300: #d4d4d8;
+  --color-slate-400: #a1a1aa;
+  --color-slate-500: #71717a;
+  --color-slate-600: #52525b;
+  --color-slate-700: #3f3f46;
+  --color-slate-800: #27272a;
+  --color-slate-900: #18181b;
+  --color-slate-950: #09090b;
+
+  --color-indigo-50: #f4f4f5;
+  --color-indigo-100: #e4e4e7;
+  --color-indigo-200: #d4d4d8;
+  --color-indigo-300: #a1a1aa;
+  --color-indigo-400: #e4e4e7;
+  --color-indigo-500: #71717a;
+  --color-indigo-600: #18181b;
+  --color-indigo-700: #09090b;
+  --color-indigo-800: #09090b;
+  --color-indigo-900: #18181b;
+  --color-indigo-950: #121214;
 }
 
 @layer base {
   body {
     font-family: var(--font-sans);
+    background-color: #fafafa;
+    color: #09090b;
+  }
+  .dark body, html.dark body {
+    background-color: #09090b;
+    color: #fafafa;
   }
   code, pre, .font-mono {
     font-family: var(--font-mono);
   }
 }
 
-/* Custom scrollbars for clean desktop density */
+/* Minimalist scrollbars */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #f4f4f5;
 }
 .dark ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #09090b;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  background: #d4d4d8;
+  border-radius: 3px;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #27272a;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #a1a1aa;
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #3f3f46;
 }
