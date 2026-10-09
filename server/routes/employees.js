@@ -153,6 +153,51 @@ router.get('/units', (req, res) => {
   }
 });
 
+// GET /api/employees/units/summary - list of units with member counts
+router.get('/units/summary', (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT u.id, u.name, u.name as unit, u.short_code, u.default_floor,
+             COUNT(e.id) as member_count
+      FROM units u
+      LEFT JOIN employees e ON (e.unit_id = u.id OR e.unit_code = u.short_code OR e.unit = u.name) AND e.is_archived = 0
+      GROUP BY u.id
+      ORDER BY u.name ASC
+    `).all();
+    return res.json(rows);
+  } catch (err) {
+    console.error('Failed to retrieve units summary:', err);
+    return res.status(500).json({ error: 'Failed to retrieve units summary.' });
+  }
+});
+
+// PUT /api/employees/units/rename (Admin only)
+router.put('/units/rename', requireRole('admin'), (req, res) => {
+  try {
+    const { oldUnit, newUnit } = req.body;
+    if (!oldUnit || !newUnit || !newUnit.trim()) {
+      return res.status(400).json({ error: 'Both oldUnit and newUnit are required.' });
+    }
+
+    const trimmedNew = newUnit.trim();
+    db.prepare('UPDATE units SET name = ? WHERE name = ?').run(trimmedNew, oldUnit);
+    const updateEmp = db.prepare(`
+      UPDATE employees
+      SET unit = ?, updated_at = datetime('now')
+      WHERE unit = ?
+    `);
+    const result = updateEmp.run(trimmedNew, oldUnit);
+
+    logAudit(null, 'RENAME_UNIT', [
+      { field: 'unit', old: oldUnit, new: trimmedNew, affectedRows: result.changes }
+    ], req.user);
+
+    return res.json({ success: true, count: result.changes, oldUnit, newUnit: trimmedNew });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to rename division: ' + err.message });
+  }
+});
+
 // GET /api/employees/:id
 router.get('/:id', (req, res) => {
   try {

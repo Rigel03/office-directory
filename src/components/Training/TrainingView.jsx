@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Award, Download, Plus, Filter, Calendar, Clock, Building, Users,
-  Trash2, X, CheckCircle, Search, FileSpreadsheet
+  Trash2, X, CheckCircle, Search, FileSpreadsheet, ChevronDown, FileText
 } from 'lucide-react';
 import { api } from '../../api';
 import { useAuth } from '../../context/AuthContext';
@@ -24,6 +24,7 @@ export function TrainingView() {
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Form State for Adding Training (Single or Bulk)
   const [addMode, setAddMode] = useState('single'); // 'single' | 'group'
@@ -251,36 +252,61 @@ export function TrainingView() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
-          {/* Export Dropdown */}
-          <button
-            onClick={() => handleExport('xlsx')}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 cursor-pointer shadow-2xs"
-            title="Download quarterly training spreadsheet"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            Export Report (.xlsx)
-          </button>
-          <button
-            onClick={() => handleExport('csv')}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-            title="Download CSV"
-          >
-            <Download className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-            CSV
-          </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Combined Export Dropdown */}
+          <div className="relative flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="h-9 inline-flex items-center gap-1.5 px-3 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer whitespace-nowrap shadow-2xs"
+              title="Export quarterly training report"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Export Report</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
+            </button>
+
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-30 animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    handleExport('xlsx');
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>Excel (.xlsx)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    handleExport('csv');
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer border-t border-slate-100 dark:border-slate-700"
+                >
+                  <FileText className="w-4 h-4 text-sky-600" />
+                  <span>CSV (.csv)</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           {isAdmin && (
             <button
+              type="button"
               onClick={openAddModal}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer shadow-xs ml-1"
+              className="h-9 inline-flex items-center gap-1.5 px-3.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs transition-colors cursor-pointer whitespace-nowrap flex-shrink-0"
             >
               <Plus className="w-4 h-4" />
-              Add Training Record
+              <span>Add Training Record</span>
             </button>
           )}
         </div>
       </div>
+
 
       {/* Quarterly Training Table */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">

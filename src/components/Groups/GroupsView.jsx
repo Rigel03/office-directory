@@ -77,9 +77,13 @@ export function GroupsView() {
     try {
       setLoadingUnits(true);
       const data = await api.getUnitsSummary();
-      setUnitSummaries(data);
-      if (data.length > 0 && !selectedUnit) {
-        setSelectedUnit(data[0].unit);
+      const formatted = (data || []).map(u => ({
+        ...u,
+        unit: u.unit || u.name
+      }));
+      setUnitSummaries(formatted);
+      if (formatted.length > 0 && !selectedUnit) {
+        setSelectedUnit(formatted[0].unit);
       }
     } catch (err) {
       console.error(err);
@@ -109,6 +113,12 @@ export function GroupsView() {
       loadGroupDetails(selectedGroupId);
     }
   }, [selectedGroupId, activeSubTab]);
+
+  useEffect(() => {
+    if (activeSubTab === 'units') {
+      loadUnits();
+    }
+  }, [activeSubTab]);
 
   useEffect(() => {
     if (selectedUnit && activeSubTab === 'units') {
