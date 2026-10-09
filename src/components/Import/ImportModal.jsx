@@ -503,22 +503,37 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                               onChange={(e) => updateRowField(r.rowIndex, 'unit', e.target.value)}
                               placeholder="Fill unit..."
                               className={`w-full px-2 py-1 text-xs rounded border ${
-                                isMissingUnit ? 'border-rose-300 bg-rose-50/40 text-rose-700' : 'border-slate-300'
+                                isMissingUnit ? 'border-rose-300 bg-rose-50/40 text-rose-700' : 'border-slate-300 dark:border-slate-700 dark:bg-slate-800'
                               } focus:ring-1 focus:ring-indigo-500`}
                             />
+                            {r.unmatchedUnit && (
+                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium block mt-0.5">
+                                Unmatched managed unit
+                              </span>
+                            )}
                           </td>
 
-                          {/* Location */}
-                          <td className="py-2.5 px-3 text-slate-600">
-                            {cur.data.location || '—'}
+                          {/* Location with Floor & Room */}
+                          <td className="py-2.5 px-3">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-slate-700 dark:text-slate-300 font-medium">
+                                {cur.data.location || '—'}
+                              </span>
+                              {r.unmatchedLocation && (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                                  <AlertTriangle className="w-3 h-3 text-amber-500" />
+                                  Unmatched raw: "{r.normalized.raw_location}"
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           {/* Action */}
                           <td className="py-2.5 px-3">
                             <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-semibold ${
-                              cur.action === 'merge' ? 'bg-indigo-50 text-indigo-700' :
-                              cur.action === 'skip' ? 'bg-slate-100 text-slate-600 line-through' :
-                              'bg-emerald-50 text-emerald-700'
+                              cur.action === 'merge' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300' :
+                              cur.action === 'skip' ? 'bg-slate-100 text-slate-600 line-through dark:bg-slate-800 dark:text-slate-400' :
+                              'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
                             }`}>
                               {cur.action}
                             </span>
@@ -526,6 +541,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }) {
                         </tr>
                       );
                     })}
+
                   </tbody>
                 </table>
               </div>

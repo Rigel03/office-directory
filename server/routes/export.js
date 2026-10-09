@@ -17,12 +17,14 @@ router.get('/employees', (req, res) => {
       groupId,
       status,
       needsReview,
+      tab,
+      archived,
       ids,
       format = 'xlsx'
     } = req.query;
 
     let query = `
-      SELECT e.id, e.full_name, e.position, e.unit, e.email, e.phone, e.location,
+      SELECT e.id, e.full_name, e.position, e.unit, e.unit_code, e.floor, e.room, e.location,
              e.status, e.needs_review, e.last_verified_at, e.notes,
              GROUP_CONCAT(DISTINCT g.name) AS groups
       FROM employees e
@@ -39,6 +41,12 @@ router.get('/employees', (req, res) => {
         params.push(...idList);
       }
     } else {
+      if (tab === 'archived' || archived === 'true' || archived === '1') {
+        query += ` AND e.is_archived = 1`;
+      } else {
+        query += ` AND e.is_archived = 0`;
+      }
+
       if (search && search.trim()) {
         const term = `%${search.trim()}%`;
         query += ` AND (e.full_name LIKE ? OR e.position LIKE ? OR e.unit LIKE ? OR e.email LIKE ? OR e.location LIKE ?)`;

@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
 export function Navbar({ activeTab, onSelectTab }) {
-  const { user, isAdmin, logout, quickSwitch } = useAuth();
+  const { user, isAdmin, logout, quickSwitch, demoMode } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
   return (
@@ -72,32 +72,30 @@ export function Navbar({ activeTab, onSelectTab }) {
               )}
             </button>
 
-            {/* Quick Test Switcher */}
-            <div className="hidden sm:flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] font-semibold">
-              <button
-                onClick={() => quickSwitch('admin')}
-                className={`px-2 py-1 rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
-                  isAdmin 
-                    ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-2xs' 
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-                title="Switch to Admin role"
-              >
-                <Shield className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                Admin
-              </button>
-              <button
-                onClick={() => quickSwitch('viewer')}
-                className={`px-2 py-1 rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
-                  !isAdmin 
-                    ? 'bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-300 shadow-2xs' 
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-                title="Switch to Viewer (Read-only) role"
-              >
-                <Eye className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                Viewer
-              </button>
+            {/* Role Badge & Optional Demo Mode Switcher */}
+            <div className="flex items-center gap-1.5">
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide uppercase ${
+                isAdmin
+                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800'
+                  : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+              }`}>
+                {isAdmin ? <Shield className="w-3 h-3 text-indigo-600 dark:text-indigo-400" /> : <Eye className="w-3 h-3 text-amber-600 dark:text-amber-400" />}
+                {user?.role}
+              </span>
+
+              {/* Demo Mode Controls - only shown if Demo Mode is turned ON */}
+              {demoMode && (
+                <div className="flex items-center bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 rounded-md p-0.5 text-[10px]">
+                  <span className="text-purple-600 dark:text-purple-300 font-bold px-1.5 uppercase">Demo:</span>
+                  <button
+                    onClick={() => quickSwitch(isAdmin ? 'viewer' : 'admin')}
+                    className="px-1.5 py-0.5 rounded bg-white dark:bg-purple-900 text-purple-700 dark:text-purple-200 shadow-2xs font-medium hover:bg-purple-100 transition-colors cursor-pointer"
+                    title={`Switch to ${isAdmin ? 'Viewer' : 'Admin'} mode`}
+                  >
+                    Switch to {isAdmin ? 'Viewer' : 'Admin'}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* User pill */}

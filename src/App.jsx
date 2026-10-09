@@ -10,7 +10,7 @@ import { LoginModal } from './components/LoginModal';
 import { ShieldCheck, Info } from 'lucide-react';
 
 function MainApp() {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, loading, isAdmin, demoMode, toggleDemoMode } = useAuth();
   const [activeTab, setActiveTab] = useState('directory');
 
   if (loading) {
@@ -56,10 +56,21 @@ function MainApp() {
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 px-6 text-center text-xs text-slate-400 dark:text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Office Internal Employee Directory & Training Record System</span>
-          <span className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            Authenticated Internal Intranet
-          </span>
+          <div className="flex items-center gap-4 text-[11px] text-slate-500 dark:text-slate-400">
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={demoMode}
+                onChange={toggleDemoMode}
+                className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span>Demo mode (role switcher)</span>
+            </label>
+            <span className="flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              Authenticated Internal Intranet
+            </span>
+          </div>
         </div>
       </footer>
     </div>

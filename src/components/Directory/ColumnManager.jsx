@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 
 export const ALL_COLUMNS = [
-  { id: 'full_name', label: 'Employee Name & Quick-Find', fixed: true, visible: true },
+  { id: 'full_name', label: 'Employee', fixed: true, visible: true },
   { id: 'position', label: 'Position', fixed: false, visible: true },
   { id: 'unit', label: 'Unit / Division', fixed: false, visible: true },
   { id: 'status', label: 'Status', fixed: false, visible: true },

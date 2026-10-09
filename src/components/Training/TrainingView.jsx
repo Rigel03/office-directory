@@ -214,9 +214,11 @@ export function TrainingView() {
               className="px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">All Units</option>
-              {units.map(u => (
-                <option key={u} value={u}>{u}</option>
-              ))}
+              {units.map(u => {
+                const uName = typeof u === 'string' ? u : u.name;
+                const uDisplay = typeof u === 'string' ? u : `[${u.short_code}] ${u.name}`;
+                return <option key={uName} value={uName}>{uDisplay}</option>;
+              })}
             </select>
           </div>
 

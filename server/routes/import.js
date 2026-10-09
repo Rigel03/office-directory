@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const xlsx = require('xlsx');
 const Papa = require('papaparse');
-const { db, logAudit } = require('../db');
+const { db, formatLocation, parseLocation, logAudit } = require('../db');
 const { authMiddleware, requireRole } = require('../auth');
 const { normalizeName, findDuplicates } = require('../nameNormalizer');
 
@@ -14,7 +14,8 @@ const upload = multer({
 
 router.use(authMiddleware);
 
-// Detect best column match based on common header names
+const STANDARD_FLOORS = ['Ground Floor', '2nd Floor', '3rd Floor', '4th Floor', '5th Floor', 'Basement'];
+
 function autoDetectMapping(headers) {
   const mapping = {
     full_name: '',
@@ -67,7 +68,6 @@ router.post('/preview', requireRole('admin'), upload.single('file'), (req, res) 
         headers = parsed.meta.fields || [];
         rawRows = parsed.data;
       } else {
-        // Excel file (.xlsx, .xls)
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
@@ -77,7 +77,6 @@ router.post('/preview', requireRole('admin'), upload.single('file'), (req, res) 
         }
       }
     } else if (req.body.pastedData) {
-      // Direct pasted CSV or TSV text
       const parsed = Papa.parse(req.body.pastedData.trim(), { header: true, skipEmptyLines: true });
       headers = parsed.meta.fields || [];
       rawRows = parsed.data;
@@ -91,16 +90,18 @@ router.post('/preview', requireRole('admin'), upload.single('file'), (req, res) 
 
     const mapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : autoDetectMapping(headers);
 
-    // Fetch existing employees to run duplicate detection
-    const existingEmployees = db.prepare('SELECT id, full_name, email, phone, position, unit, location FROM employees').all();
+    const existingEmployees = db.prepare('SELECT id, full_name, email, phone, position, unit, location FROM employees WHERE is_archived = 0').all();
+    const managedUnits = db.prepare('SELECT id, name, short_code, default_floor FROM units').all();
 
     const processedRows = [];
     let duplicateCount = 0;
     let missingInfoCount = 0;
+    let unmatchedLocationCount = 0;
+    let unmatchedUnitCount = 0;
 
     rawRows.forEach((raw, idx) => {
       const rawName = mapping.full_name ? String(raw[mapping.full_name] || '').trim() : '';
-      if (!rawName) return; // Skip rows with no name
+      if (!rawName) return;
 
       const rawPos = mapping.position ? String(raw[mapping.position] || '').trim() : '';
       const rawUnit = mapping.unit ? String(raw[mapping.unit] || '').trim() : '';
@@ -112,6 +113,32 @@ router.post('/preview', requireRole('admin'), upload.single('file'), (req, res) 
 
       const validStat = ['active', 'on leave', 'detached'].includes(rawStat) ? rawStat : 'active';
       const normalizedName = normalizeName(rawName);
+
+      // Location parsing & matching
+      let parsedLoc = parseLocation(rawLoc);
+      let floorMatched = false;
+      let matchedFloor = '';
+      if (parsedLoc.floor) {
+        const found = STANDARD_FLOORS.find(f => f.toLowerCase() === parsedLoc.floor.toLowerCase());
+        if (found) {
+          floorMatched = true;
+          matchedFloor = found;
+        }
+      }
+      const unmatchedLocation = Boolean(rawLoc && (!floorMatched || !parsedLoc.room));
+      if (unmatchedLocation) unmatchedLocationCount++;
+
+      // Unit matching
+      let matchedUnit = null;
+      if (rawUnit) {
+        matchedUnit = managedUnits.find(u =>
+          u.name.toLowerCase() === rawUnit.toLowerCase() ||
+          u.short_code.toLowerCase() === rawUnit.toLowerCase() ||
+          rawUnit.toLowerCase().includes(u.short_code.toLowerCase())
+        );
+      }
+      const unmatchedUnit = Boolean(rawUnit && !matchedUnit);
+      if (unmatchedUnit) unmatchedUnitCount++;
 
       const missingFields = [];
       if (!rawPos) missingFields.push('position');
@@ -136,16 +163,23 @@ router.post('/preview', requireRole('admin'), upload.single('file'), (req, res) 
           full_name: normalizedName,
           original_name: rawName,
           position: rawPos,
-          unit: rawUnit,
+          unit: matchedUnit ? matchedUnit.name : rawUnit,
+          unit_code: matchedUnit ? matchedUnit.short_code : '',
+          unit_id: matchedUnit ? matchedUnit.id : null,
+          floor: matchedFloor || parsedLoc.floor,
+          room: parsedLoc.room,
+          location: formatLocation(matchedFloor || parsedLoc.floor, parsedLoc.room) || rawLoc,
+          raw_location: rawLoc,
           email: rawEmail,
           phone: rawPhone,
-          location: rawLoc,
           status: validStat,
           notes: rawNotes,
           needs_review: missingFields.length > 0
         },
         missingFields,
         hasMissingFields: missingFields.length > 0,
+        unmatchedLocation,
+        unmatchedUnit,
         duplicates: dupes.map(d => ({
           existingId: d.existing.id,
           existingName: d.existing.full_name,
@@ -163,6 +197,8 @@ router.post('/preview', requireRole('admin'), upload.single('file'), (req, res) 
       totalRows: processedRows.length,
       missingInfoCount,
       duplicateCount,
+      unmatchedLocationCount,
+      unmatchedUnitCount,
       rows: processedRows
     });
   } catch (err) {
@@ -175,12 +211,6 @@ router.post('/preview', requireRole('admin'), upload.single('file'), (req, res) 
 router.post('/commit', requireRole('admin'), (req, res) => {
   try {
     const { items } = req.body;
-    // items: Array of {
-    //   action: 'create' | 'merge' | 'skip',
-    //   targetEmployeeId?: number,
-    //   data: { full_name, position, unit, email, phone, location, status, notes }
-    // }
-
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'No items provided to import.' });
     }
@@ -189,21 +219,27 @@ router.post('/commit', requireRole('admin'), (req, res) => {
     let mergedCount = 0;
     let skippedCount = 0;
 
+    const managedUnits = db.prepare('SELECT id, name, short_code, default_floor FROM units').all();
+
     const transaction = db.transaction(() => {
       const insertEmp = db.prepare(`
         INSERT INTO employees (
-          full_name, position, unit, email, phone, location, status,
-          needs_review, last_verified_at, notes, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, datetime('now'), datetime('now'))
+          full_name, position, unit_id, unit, unit_code, floor, room, location,
+          email, phone, status, needs_review, is_archived, last_verified_at, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, datetime('now'), ?, datetime('now'), datetime('now'))
       `);
 
       const updateEmp = db.prepare(`
         UPDATE employees
         SET position = CASE WHEN position = '' OR position IS NULL THEN ? ELSE position END,
             unit = CASE WHEN unit = '' OR unit IS NULL THEN ? ELSE unit END,
+            unit_code = CASE WHEN unit_code = '' OR unit_code IS NULL THEN ? ELSE unit_code END,
+            unit_id = CASE WHEN unit_id IS NULL THEN ? ELSE unit_id END,
+            floor = CASE WHEN floor = '' OR floor IS NULL THEN ? ELSE floor END,
+            room = CASE WHEN room = '' OR room IS NULL THEN ? ELSE room END,
+            location = CASE WHEN location = '' OR location IS NULL THEN ? ELSE location END,
             email = CASE WHEN email = '' OR email IS NULL THEN ? ELSE email END,
             phone = CASE WHEN phone = '' OR phone IS NULL THEN ? ELSE phone END,
-            location = CASE WHEN location = '' OR location IS NULL THEN ? ELSE location END,
             notes = CASE WHEN notes = '' OR notes IS NULL THEN ? ELSE notes || ' | ' || ? END,
             needs_review = CASE WHEN (CASE WHEN position = '' THEN ? ELSE position END) = '' OR (CASE WHEN unit = '' THEN ? ELSE unit END) = '' THEN 1 ELSE 0 END,
             updated_at = datetime('now')
@@ -219,16 +255,36 @@ router.post('/commit', requireRole('admin'), (req, res) => {
         const d = item.data;
         const normName = normalizeName(d.full_name || d.name);
         const pos = (d.position || '').trim();
-        const unit = (d.unit || '').trim();
+        let unit = (d.unit || '').trim();
+        let unitCode = (d.unit_code || '').trim().toUpperCase();
+        let unitId = d.unit_id || null;
+
+        // Resolve unit
+        if (!unitId && unit) {
+          const match = managedUnits.find(u => u.name.toLowerCase() === unit.toLowerCase() || u.short_code.toLowerCase() === unit.toLowerCase());
+          if (match) {
+            unitId = match.id;
+            unit = match.name;
+            unitCode = match.short_code;
+          }
+        }
+
+        const floor = (d.floor || '').trim();
+        const room = (d.room || '').trim();
+        const loc = formatLocation(floor, room) || (d.location || '').trim();
         const needsReview = (!pos || !unit) ? 1 : 0;
 
         if (item.action === 'merge' && item.targetEmployeeId) {
           updateEmp.run(
             pos,
             unit,
+            unitCode,
+            unitId,
+            floor,
+            room,
+            loc,
             (d.email || '').trim(),
             (d.phone || '').trim(),
-            (d.location || '').trim(),
             (d.notes || '').trim(),
             (d.notes || '').trim(),
             pos,
@@ -240,14 +296,17 @@ router.post('/commit', requireRole('admin'), (req, res) => {
           ], req.user);
           mergedCount++;
         } else {
-          // Default: create new record
           const result = insertEmp.run(
             normName,
             pos,
+            unitId,
             unit,
+            unitCode,
+            floor,
+            room,
+            loc,
             (d.email || '').trim(),
             (d.phone || '').trim(),
-            (d.location || '').trim(),
             d.status || 'active',
             needsReview,
             (d.notes || '').trim()

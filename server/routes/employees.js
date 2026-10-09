@@ -1,11 +1,38 @@
 const express = require('express');
 const router = express.Router();
-const { db, logAudit } = require('../db');
+const { db, formatLocation, parseLocation, logAudit } = require('../db');
 const { authMiddleware, requireRole } = require('../auth');
 const { normalizeName } = require('../nameNormalizer');
 
 // All routes require authentication
 router.use(authMiddleware);
+
+// GET /api/employees/summary - single source of truth for counts
+router.get('/summary', (req, res) => {
+  try {
+    const summary = db.prepare(`
+      SELECT
+        SUM(CASE WHEN is_archived = 0 THEN 1 ELSE 0 END) as total,
+        SUM(CASE WHEN is_archived = 0 AND status = 'active' THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN is_archived = 0 AND status = 'on leave' THEN 1 ELSE 0 END) as on_leave,
+        SUM(CASE WHEN is_archived = 0 AND status = 'detached' THEN 1 ELSE 0 END) as detached,
+        SUM(CASE WHEN is_archived = 0 AND needs_review = 1 THEN 1 ELSE 0 END) as needs_review,
+        SUM(CASE WHEN is_archived = 1 THEN 1 ELSE 0 END) as archived
+      FROM employees
+    `).get();
+
+    return res.json({
+      total: summary.total || 0,
+      active: summary.active || 0,
+      on_leave: summary.on_leave || 0,
+      detached: summary.detached || 0,
+      needs_review: summary.needs_review || 0,
+      archived: summary.archived || 0
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to retrieve summary counts.' });
+  }
+});
 
 // GET /api/employees
 router.get('/', (req, res) => {
@@ -15,40 +42,58 @@ router.get('/', (req, res) => {
       unit,
       groupId,
       status,
+      tab,
       needsReview,
+      archived,
       sortBy = 'full_name',
       sortOrder = 'asc'
     } = req.query;
 
     let query = `
       SELECT e.*,
+        u.short_code as managed_short_code,
+        u.name as managed_unit_name,
+        u.default_floor as unit_default_floor,
         GROUP_CONCAT(DISTINCT g.name) AS group_names,
         GROUP_CONCAT(DISTINCT g.id) AS group_ids
       FROM employees e
+      LEFT JOIN units u ON (e.unit_id = u.id OR e.unit_code = u.short_code OR e.unit = u.name)
       LEFT JOIN employee_groups eg ON e.id = eg.employee_id
       LEFT JOIN groups g ON eg.group_id = g.id
       WHERE 1=1
     `;
     const params = [];
 
+    // Filter archived vs active
+    if (tab === 'archived' || archived === 'true' || archived === '1') {
+      query += ` AND e.is_archived = 1`;
+    } else {
+      query += ` AND e.is_archived = 0`;
+    }
+
+    // Quick view tab filter
+    if (tab === 'needs_review' || needsReview === 'true' || needsReview === '1') {
+      query += ` AND e.needs_review = 1`;
+    } else if (tab === 'on_leave') {
+      query += ` AND e.status = 'on leave'`;
+    } else if (tab === 'detached') {
+      query += ` AND e.status = 'detached'`;
+    }
+
+    if (status && status.trim() && !['all', 'needs_review', 'archived'].includes(status.toLowerCase())) {
+      query += ` AND e.status = ?`;
+      params.push(status.trim().toLowerCase());
+    }
+
     if (search && search.trim()) {
       const term = `%${search.trim()}%`;
-      query += ` AND (e.full_name LIKE ? OR e.position LIKE ? OR e.unit LIKE ? OR e.email LIKE ? OR e.location LIKE ?)`;
-      params.push(term, term, term, term, term);
+      query += ` AND (e.full_name LIKE ? OR e.position LIKE ? OR e.unit LIKE ? OR e.unit_code LIKE ? OR e.email LIKE ? OR e.location LIKE ? OR e.room LIKE ? OR e.floor LIKE ?)`;
+      params.push(term, term, term, term, term, term, term, term);
     }
 
     if (unit && unit.trim()) {
-      query += ` AND e.unit = ?`;
-      params.push(unit.trim());
-    }
-
-    if (status && status.trim()) {
-      query += ` AND e.status = ?`;
-      params.push(status.trim());
-    }
-
-    if (needsReview === 'true' || needsReview === '1') {
-      query += ` AND e.needs_review = 1`;
+      query += ` AND (e.unit = ? OR e.unit_code = ? OR u.short_code = ?)`;
+      params.push(unit.trim(), unit.trim(), unit.trim());
     }
 
     if (groupId) {
@@ -58,8 +103,7 @@ router.get('/', (req, res) => {
 
     query += ` GROUP BY e.id`;
 
-    // Validate sort column to avoid SQL injection
-    const allowedSortCols = ['full_name', 'position', 'unit', 'status', 'location', 'last_verified_at', 'created_at', 'needs_review'];
+    const allowedSortCols = ['full_name', 'position', 'unit', 'unit_code', 'status', 'location', 'last_verified_at', 'created_at', 'needs_review'];
     const safeSortCol = allowedSortCols.includes(sortBy) ? sortBy : 'full_name';
     const safeSortOrder = sortOrder.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
 
@@ -67,17 +111,30 @@ router.get('/', (req, res) => {
 
     const employees = db.prepare(query).all(...params);
 
-    // Format group list
-    const formatted = employees.map(emp => ({
-      ...emp,
-      needs_review: Boolean(emp.needs_review),
-      groups: emp.group_names
-        ? emp.group_names.split(',').map((name, i) => ({
-            id: Number(emp.group_ids.split(',')[i]),
-            name: name.trim()
-          }))
-        : []
-    }));
+    const formatted = employees.map(emp => {
+      const unitCode = emp.unit_code || emp.managed_short_code || (emp.unit ? emp.unit.substring(0, 4).toUpperCase() : '');
+      const unitName = emp.managed_unit_name || emp.unit || '';
+      const formattedLoc = formatLocation(emp.floor, emp.room) || emp.location;
+      const expectedFloor = emp.unit_default_floor || '';
+      const locationMismatch = Boolean(emp.floor && expectedFloor && emp.floor.toLowerCase().trim() !== expectedFloor.toLowerCase().trim());
+
+      return {
+        ...emp,
+        unit: unitName,
+        unit_code: unitCode,
+        location: formattedLoc,
+        location_mismatch: locationMismatch,
+        expected_floor: expectedFloor,
+        needs_review: Boolean(emp.needs_review),
+        is_archived: Boolean(emp.is_archived),
+        groups: emp.group_names
+          ? emp.group_names.split(',').map((name, i) => ({
+              id: Number(emp.group_ids.split(',')[i]),
+              name: name.trim()
+            }))
+          : []
+      };
+    });
 
     return res.json(formatted);
   } catch (err) {
@@ -89,59 +146,26 @@ router.get('/', (req, res) => {
 // GET /api/employees/units
 router.get('/units', (req, res) => {
   try {
-    const rows = db.prepare(`SELECT DISTINCT unit FROM employees WHERE unit IS NOT NULL AND unit != '' ORDER BY unit ASC`).all();
-    return res.json(rows.map(r => r.unit));
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to retrieve units.' });
-  }
-});
-
-// GET /api/employees/units/summary (with employee counts)
-router.get('/units/summary', (req, res) => {
-  try {
-    const rows = db.prepare(`
-      SELECT unit, COUNT(*) as member_count
-      FROM employees
-      WHERE unit IS NOT NULL AND unit != ''
-      GROUP BY unit
-      ORDER BY unit ASC
-    `).all();
+    const rows = db.prepare(`SELECT DISTINCT short_code, name, default_floor FROM units ORDER BY name ASC`).all();
     return res.json(rows);
   } catch (err) {
-    return res.status(500).json({ error: 'Failed to retrieve units summary.' });
-  }
-});
-
-// PUT /api/employees/units/rename (Admin only - rename a division/unit across all employees)
-router.put('/units/rename', requireRole('admin'), (req, res) => {
-  try {
-    const { oldUnit, newUnit } = req.body;
-    if (!oldUnit || !newUnit || !newUnit.trim()) {
-      return res.status(400).json({ error: 'Both oldUnit and newUnit are required.' });
-    }
-
-    const trimmedNew = newUnit.trim();
-    const update = db.prepare(`
-      UPDATE employees
-      SET unit = ?, updated_at = datetime('now')
-      WHERE unit = ?
-    `);
-
-    const result = update.run(trimmedNew, oldUnit);
-    logAudit(null, 'RENAME_UNIT', [
-      { field: 'unit', old: oldUnit, new: trimmedNew, affectedRows: result.changes }
-    ], req.user);
-
-    return res.json({ success: true, count: result.changes, oldUnit, newUnit: trimmedNew });
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to rename unit: ' + err.message });
+    return res.status(500).json({ error: 'Failed to retrieve units.' });
   }
 });
 
 // GET /api/employees/:id
 router.get('/:id', (req, res) => {
   try {
-    const emp = db.prepare('SELECT * FROM employees WHERE id = ?').get(req.params.id);
+    const emp = db.prepare(`
+      SELECT e.*,
+        u.short_code as managed_short_code,
+        u.name as managed_unit_name,
+        u.default_floor as unit_default_floor
+      FROM employees e
+      LEFT JOIN units u ON (e.unit_id = u.id OR e.unit_code = u.short_code OR e.unit = u.name)
+      WHERE e.id = ?
+    `).get(req.params.id);
+
     if (!emp) return res.status(404).json({ error: 'Employee not found.' });
 
     const groups = db.prepare(`
@@ -154,9 +178,20 @@ router.get('/:id', (req, res) => {
       SELECT * FROM training_records WHERE employee_id = ? ORDER BY date DESC
     `).all(req.params.id);
 
+    const unitCode = emp.unit_code || emp.managed_short_code || '';
+    const unitName = emp.managed_unit_name || emp.unit || '';
+    const formattedLoc = formatLocation(emp.floor, emp.room) || emp.location;
+    const locationMismatch = Boolean(emp.floor && emp.unit_default_floor && emp.floor.toLowerCase().trim() !== emp.unit_default_floor.toLowerCase().trim());
+
     return res.json({
       ...emp,
+      unit: unitName,
+      unit_code: unitCode,
+      location: formattedLoc,
+      location_mismatch: locationMismatch,
+      expected_floor: emp.unit_default_floor || '',
       needs_review: Boolean(emp.needs_review),
+      is_archived: Boolean(emp.is_archived),
       groups,
       training
     });
@@ -188,9 +223,12 @@ router.post('/', requireRole('admin'), (req, res) => {
       full_name,
       position,
       unit,
+      unit_code,
+      unit_id,
+      floor,
+      room,
       email,
       phone,
-      location,
       status = 'active',
       notes = '',
       groupIds = []
@@ -200,33 +238,63 @@ router.post('/', requireRole('admin'), (req, res) => {
       return res.status(400).json({ error: 'Full name is required.' });
     }
 
-    // Rule: position and unit must be filled before saving!
     const cleanPos = (position || '').trim();
-    const cleanUnit = (unit || '').trim();
+    let cleanUnit = (unit || '').trim();
+    let cleanCode = (unit_code || '').trim().toUpperCase();
+    let cleanUnitId = unit_id || null;
 
+    // Resolve unit from units table
+    if (cleanUnitId) {
+      const u = db.prepare('SELECT id, name, short_code FROM units WHERE id = ?').get(cleanUnitId);
+      if (u) {
+        cleanUnit = u.name;
+        cleanCode = u.short_code;
+      }
+    } else if (cleanCode) {
+      const u = db.prepare('SELECT id, name, short_code FROM units WHERE short_code = ?').get(cleanCode);
+      if (u) {
+        cleanUnitId = u.id;
+        cleanUnit = u.name;
+      }
+    } else if (cleanUnit) {
+      const u = db.prepare('SELECT id, name, short_code FROM units WHERE name = ? COLLATE NOCASE').get(cleanUnit);
+      if (u) {
+        cleanUnitId = u.id;
+        cleanCode = u.short_code;
+      }
+    }
+
+    // Required fields rule
     if (!cleanPos || !cleanUnit) {
       return res.status(400).json({
         error: 'Both Position and Unit are required fields before saving a new employee record.'
       });
     }
 
+    const cleanFloor = (floor || '').trim();
+    const cleanRoom = (room || '').trim();
+    const formattedLoc = formatLocation(cleanFloor, cleanRoom);
     const normalizedName = normalizeName(full_name);
     const needsReview = (!cleanPos || !cleanUnit) ? 1 : 0;
 
     const insert = db.prepare(`
       INSERT INTO employees (
-        full_name, position, unit, email, phone, location, status,
-        needs_review, last_verified_at, notes, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, datetime('now'), datetime('now'))
+        full_name, position, unit_id, unit, unit_code, floor, room, location,
+        email, phone, status, needs_review, is_archived, last_verified_at, notes, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, datetime('now'), ?, datetime('now'), datetime('now'))
     `);
 
     const result = insert.run(
       normalizedName,
       cleanPos,
+      cleanUnitId,
       cleanUnit,
+      cleanCode,
+      cleanFloor,
+      cleanRoom,
+      formattedLoc,
       (email || '').trim(),
       (phone || '').trim(),
-      (location || '').trim(),
       status,
       needsReview,
       (notes || '').trim()
@@ -234,7 +302,6 @@ router.post('/', requireRole('admin'), (req, res) => {
 
     const newId = result.lastInsertRowid;
 
-    // Attach groups if any
     if (Array.isArray(groupIds) && groupIds.length > 0) {
       const insertGroup = db.prepare('INSERT OR IGNORE INTO employee_groups (employee_id, group_id) VALUES (?, ?)');
       for (const gid of groupIds) {
@@ -265,16 +332,41 @@ router.put('/:id', requireRole('admin'), (req, res) => {
       full_name,
       position,
       unit,
+      unit_code,
+      unit_id,
+      floor,
+      room,
       email,
       phone,
-      location,
       status,
       notes,
       groupIds
     } = req.body;
 
     const cleanPos = (position || '').trim();
-    const cleanUnit = (unit || '').trim();
+    let cleanUnit = (unit || '').trim();
+    let cleanCode = (unit_code || '').trim().toUpperCase();
+    let cleanUnitId = unit_id || null;
+
+    if (cleanUnitId) {
+      const u = db.prepare('SELECT id, name, short_code FROM units WHERE id = ?').get(cleanUnitId);
+      if (u) {
+        cleanUnit = u.name;
+        cleanCode = u.short_code;
+      }
+    } else if (cleanCode) {
+      const u = db.prepare('SELECT id, name, short_code FROM units WHERE short_code = ?').get(cleanCode);
+      if (u) {
+        cleanUnitId = u.id;
+        cleanUnit = u.name;
+      }
+    } else if (cleanUnit) {
+      const u = db.prepare('SELECT id, name, short_code FROM units WHERE name = ? COLLATE NOCASE').get(cleanUnit);
+      if (u) {
+        cleanUnitId = u.id;
+        cleanCode = u.short_code;
+      }
+    }
 
     // Required fields rule
     if (!cleanPos || !cleanUnit) {
@@ -283,18 +375,23 @@ router.put('/:id', requireRole('admin'), (req, res) => {
       });
     }
 
+    const cleanFloor = (floor !== undefined ? floor : existing.floor || '').trim();
+    const cleanRoom = (room !== undefined ? room : existing.room || '').trim();
+    const formattedLoc = formatLocation(cleanFloor, cleanRoom);
     const normalizedName = normalizeName(full_name || existing.full_name);
     const needsReview = (!cleanPos || !cleanUnit) ? 1 : 0;
 
-    // Audit diff tracking
     const changes = [];
     const fieldsToCheck = [
       { key: 'full_name', val: normalizedName },
       { key: 'position', val: cleanPos },
       { key: 'unit', val: cleanUnit },
+      { key: 'unit_code', val: cleanCode },
+      { key: 'floor', val: cleanFloor },
+      { key: 'room', val: cleanRoom },
+      { key: 'location', val: formattedLoc },
       { key: 'email', val: (email || '').trim() },
       { key: 'phone', val: (phone || '').trim() },
-      { key: 'location', val: (location || '').trim() },
       { key: 'status', val: status || existing.status },
       { key: 'notes', val: (notes || '').trim() }
     ];
@@ -307,25 +404,29 @@ router.put('/:id', requireRole('admin'), (req, res) => {
 
     const update = db.prepare(`
       UPDATE employees
-      SET full_name = ?, position = ?, unit = ?, email = ?, phone = ?,
-          location = ?, status = ?, needs_review = ?, notes = ?, updated_at = datetime('now')
+      SET full_name = ?, position = ?, unit_id = ?, unit = ?, unit_code = ?,
+          floor = ?, room = ?, location = ?, email = ?, phone = ?,
+          status = ?, needs_review = ?, notes = ?, updated_at = datetime('now')
       WHERE id = ?
     `);
 
     update.run(
       normalizedName,
       cleanPos,
+      cleanUnitId,
       cleanUnit,
+      cleanCode,
+      cleanFloor,
+      cleanRoom,
+      formattedLoc,
       (email || '').trim(),
       (phone || '').trim(),
-      (location || '').trim(),
       status || existing.status,
       needsReview,
       (notes || '').trim(),
       id
     );
 
-    // Sync groups if provided
     if (Array.isArray(groupIds)) {
       db.prepare('DELETE FROM employee_groups WHERE employee_id = ?').run(id);
       const insertGroup = db.prepare('INSERT INTO employee_groups (employee_id, group_id) VALUES (?, ?)');
@@ -347,7 +448,7 @@ router.put('/:id', requireRole('admin'), (req, res) => {
   }
 });
 
-// PATCH /api/employees/:id/inline (Admin only - quick fix for position/unit)
+// PATCH /api/employees/:id/inline (Admin only - quick fix)
 router.patch('/:id/inline', requireRole('admin'), (req, res) => {
   try {
     const id = req.params.id;
@@ -355,31 +456,53 @@ router.patch('/:id/inline', requireRole('admin'), (req, res) => {
     if (!existing) return res.status(404).json({ error: 'Employee not found.' });
 
     const { field, value } = req.body;
-    const allowed = ['position', 'unit', 'location', 'status', 'email', 'phone'];
+    const allowed = ['position', 'unit', 'unit_code', 'floor', 'room', 'status', 'email', 'phone'];
     if (!allowed.includes(field)) {
       return res.status(400).json({ error: `Field '${field}' is not editable inline.` });
     }
 
     const cleanVal = (value || '').trim();
-    if (existing[field] === cleanVal) {
-      return res.json(existing);
+    let pos = existing.position;
+    let unit = existing.unit;
+    let unitCode = existing.unit_code;
+    let unitId = existing.unit_id;
+    let floor = existing.floor;
+    let room = existing.room;
+
+    if (field === 'position') {
+      pos = cleanVal;
+    } else if (field === 'unit') {
+      unit = cleanVal;
+      const u = db.prepare('SELECT id, name, short_code FROM units WHERE name = ? COLLATE NOCASE OR short_code = ?').get(cleanVal, cleanVal.toUpperCase());
+      if (u) {
+        unitId = u.id;
+        unit = u.name;
+        unitCode = u.short_code;
+      }
+    } else if (field === 'unit_code') {
+      unitCode = cleanVal.toUpperCase();
+      const u = db.prepare('SELECT id, name, short_code FROM units WHERE short_code = ?').get(unitCode);
+      if (u) {
+        unitId = u.id;
+        unit = u.name;
+      }
+    } else if (field === 'floor') {
+      floor = cleanVal;
+    } else if (field === 'room') {
+      room = cleanVal;
     }
 
-    const changes = [{ field, old: existing[field], new: cleanVal }];
-
-    // Compute new needs_review status
-    const pos = field === 'position' ? cleanVal : existing.position;
-    const unit = field === 'unit' ? cleanVal : existing.unit;
+    const location = formatLocation(floor, room);
     const needsReview = (!pos || !unit) ? 1 : 0;
 
-    const stmt = db.prepare(`
+    db.prepare(`
       UPDATE employees
-      SET ${field} = ?, needs_review = ?, updated_at = datetime('now')
+      SET position = ?, unit_id = ?, unit = ?, unit_code = ?, floor = ?, room = ?, location = ?,
+          needs_review = ?, updated_at = datetime('now')
       WHERE id = ?
-    `);
-    stmt.run(cleanVal, needsReview, id);
+    `).run(pos, unitId, unit, unitCode, floor, room, location, needsReview, id);
 
-    logAudit(id, 'INLINE_UPDATE', changes, req.user);
+    logAudit(id, 'INLINE_UPDATE', [{ field, old: existing[field], new: cleanVal }], req.user);
 
     const updated = db.prepare('SELECT * FROM employees WHERE id = ?').get(id);
     return res.json(updated);
@@ -389,41 +512,49 @@ router.patch('/:id/inline', requireRole('admin'), (req, res) => {
   }
 });
 
-// POST /api/employees/:id/verify (Admin only)
-router.post('/:id/verify', requireRole('admin'), (req, res) => {
+// POST /api/employees/:id/archive (Admin only - soft delete)
+router.post('/:id/archive', requireRole('admin'), (req, res) => {
   try {
     const id = req.params.id;
     const emp = db.prepare('SELECT * FROM employees WHERE id = ?').get(id);
     if (!emp) return res.status(404).json({ error: 'Employee not found.' });
 
-    const needsReview = (!emp.position || !emp.unit) ? 1 : 0;
+    db.prepare(`UPDATE employees SET is_archived = 1, updated_at = datetime('now') WHERE id = ?`).run(id);
+    logAudit(id, 'ARCHIVE', [{ field: 'is_archived', old: 0, new: 1 }], req.user);
 
-    db.prepare(`
-      UPDATE employees
-      SET last_verified_at = datetime('now'), needs_review = ?, updated_at = datetime('now')
-      WHERE id = ?
-    `).run(needsReview, id);
-
-    logAudit(id, 'VERIFY', [{ field: 'last_verified_at', old: emp.last_verified_at, new: 'Verified now' }], req.user);
-
-    const updated = db.prepare('SELECT * FROM employees WHERE id = ?').get(id);
-    return res.json(updated);
+    return res.json({ success: true, message: `Archived ${emp.full_name}.` });
   } catch (err) {
-    return res.status(500).json({ error: 'Failed to verify employee record.' });
+    return res.status(500).json({ error: 'Failed to archive employee.' });
   }
 });
 
-// DELETE /api/employees/:id (Admin only)
+// POST /api/employees/:id/restore (Admin only - restore soft deleted)
+router.post('/:id/restore', requireRole('admin'), (req, res) => {
+  try {
+    const id = req.params.id;
+    const emp = db.prepare('SELECT * FROM employees WHERE id = ?').get(id);
+    if (!emp) return res.status(404).json({ error: 'Employee not found.' });
+
+    db.prepare(`UPDATE employees SET is_archived = 0, updated_at = datetime('now') WHERE id = ?`).run(id);
+    logAudit(id, 'RESTORE', [{ field: 'is_archived', old: 1, new: 0 }], req.user);
+
+    return res.json({ success: true, message: `Restored ${emp.full_name}.` });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to restore employee.' });
+  }
+});
+
+// DELETE /api/employees/:id (Admin only - permanent deletion)
 router.delete('/:id', requireRole('admin'), (req, res) => {
   try {
     const id = req.params.id;
     const emp = db.prepare('SELECT * FROM employees WHERE id = ?').get(id);
     if (!emp) return res.status(404).json({ error: 'Employee not found.' });
 
-    logAudit(id, 'DELETE', [{ field: 'record', old: emp.full_name, new: 'DELETED' }], req.user);
+    logAudit(id, 'PERMANENT_DELETE', [{ field: 'record', old: emp.full_name, new: 'DELETED' }], req.user);
     db.prepare('DELETE FROM employees WHERE id = ?').run(id);
 
-    return res.json({ success: true, message: `Employee ${emp.full_name} deleted.` });
+    return res.json({ success: true, message: `Permanently deleted ${emp.full_name}.` });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to delete employee.' });
   }
@@ -440,14 +571,19 @@ router.post('/bulk', requireRole('admin'), (req, res) => {
     const transaction = db.transaction(() => {
       if (action === 'move_unit') {
         if (!targetUnit) throw new Error('Target unit is required');
+        const u = db.prepare('SELECT id, name, short_code FROM units WHERE name = ? COLLATE NOCASE OR short_code = ?').get(targetUnit, targetUnit.toUpperCase());
+        const unitName = u ? u.name : targetUnit.trim();
+        const unitCode = u ? u.short_code : '';
+        const unitId = u ? u.id : null;
+
         const update = db.prepare(`
           UPDATE employees
-          SET unit = ?, needs_review = CASE WHEN position = '' THEN 1 ELSE 0 END, updated_at = datetime('now')
+          SET unit = ?, unit_code = ?, unit_id = ?, needs_review = CASE WHEN position = '' THEN 1 ELSE 0 END, updated_at = datetime('now')
           WHERE id = ?
         `);
         for (const id of ids) {
-          update.run(targetUnit.trim(), id);
-          logAudit(id, 'BULK_MOVE_UNIT', [{ field: 'unit', old: 'bulk', new: targetUnit }], req.user);
+          update.run(unitName, unitCode, unitId, id);
+          logAudit(id, 'BULK_MOVE_UNIT', [{ field: 'unit', old: 'bulk', new: unitName }], req.user);
         }
       } else if (action === 'add_group') {
         if (!targetGroupId) throw new Error('Target group is required');
@@ -456,17 +592,24 @@ router.post('/bulk', requireRole('admin'), (req, res) => {
           insert.run(id, targetGroupId);
           logAudit(id, 'BULK_ADD_GROUP', [{ field: 'group', old: null, new: `Group ID ${targetGroupId}` }], req.user);
         }
-      } else if (action === 'verify') {
-        const update = db.prepare(`
-          UPDATE employees
-          SET last_verified_at = datetime('now'),
-              needs_review = CASE WHEN position = '' OR unit = '' THEN 1 ELSE 0 END,
-              updated_at = datetime('now')
-          WHERE id = ?
-        `);
+      } else if (action === 'remove_group') {
+        if (!targetGroupId) throw new Error('Target group is required');
+        const del = db.prepare('DELETE FROM employee_groups WHERE employee_id = ? AND group_id = ?');
+        for (const id of ids) {
+          del.run(id, targetGroupId);
+          logAudit(id, 'BULK_REMOVE_GROUP', [{ field: 'group', old: `Group ID ${targetGroupId}`, new: 'Removed' }], req.user);
+        }
+      } else if (action === 'archive') {
+        const update = db.prepare(`UPDATE employees SET is_archived = 1, updated_at = datetime('now') WHERE id = ?`);
         for (const id of ids) {
           update.run(id);
-          logAudit(id, 'BULK_VERIFY', [{ field: 'verified', old: null, new: 'Bulk verified' }], req.user);
+          logAudit(id, 'BULK_ARCHIVE', [{ field: 'is_archived', old: 0, new: 1 }], req.user);
+        }
+      } else if (action === 'restore') {
+        const update = db.prepare(`UPDATE employees SET is_archived = 0, updated_at = datetime('now') WHERE id = ?`);
+        for (const id of ids) {
+          update.run(id);
+          logAudit(id, 'BULK_RESTORE', [{ field: 'is_archived', old: 1, new: 0 }], req.user);
         }
       } else if (action === 'delete') {
         const del = db.prepare('DELETE FROM employees WHERE id = ?');

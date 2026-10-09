@@ -53,6 +53,18 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const [demoMode, setDemoMode] = useState(() => {
+    return localStorage.getItem('office_directory_demo_mode') === 'true';
+  });
+
+  const toggleDemoMode = () => {
+    setDemoMode(prev => {
+      const next = !prev;
+      localStorage.setItem('office_directory_demo_mode', String(next));
+      return next;
+    });
+  };
+
   const quickSwitch = async (role) => {
     const creds = role === 'admin' 
       ? { username: 'admin', password: 'admin123' }
@@ -66,6 +78,8 @@ export function AuthProvider({ children }) {
     isAdmin: user?.role === 'admin',
     isViewer: user?.role === 'viewer',
     loading,
+    demoMode,
+    toggleDemoMode,
     login,
     logout,
     quickSwitch

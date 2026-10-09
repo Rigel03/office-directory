@@ -9,6 +9,33 @@ const db = new Database(dbPath);
 db.pragma('foreign_keys = ON');
 db.pragma('journal_mode = WAL');
 
+function formatLocation(floor, room) {
+  const f = (floor || '').trim();
+  const r = (room || '').trim();
+  if (f && r) return `${f} · ${r}`;
+  return f || r || '';
+}
+
+function parseLocation(locStr) {
+  if (!locStr) return { floor: '', room: '' };
+  const s = String(locStr).trim();
+  // Match standard delimiter " · " or " - " or " / "
+  const parts = s.split(/\s+[·\-\/]\s+/);
+  if (parts.length >= 2) {
+    let floor = parts[0].trim();
+    let room = parts.slice(1).join(' - ').trim();
+    return { floor, room };
+  }
+  // Check if starts with a floor pattern
+  const floorMatch = s.match(/^(Ground Floor|Basement|[1-9](?:st|nd|rd|th)?\s*Floor)/i);
+  if (floorMatch) {
+    const floor = floorMatch[0].trim();
+    const room = s.replace(floorMatch[0], '').replace(/^[\s,\-·\/]+/, '').trim();
+    return { floor, room };
+  }
+  return { floor: '', room: s };
+}
+
 function initSchema() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -20,20 +47,42 @@ function initSchema() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS units (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      short_code TEXT UNIQUE NOT NULL,
+      default_floor TEXT DEFAULT '',
+      description TEXT DEFAULT '',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS rooms (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      floor TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS employees (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       full_name TEXT NOT NULL,
       position TEXT DEFAULT '',
+      unit_id INTEGER,
       unit TEXT DEFAULT '',
+      unit_code TEXT DEFAULT '',
+      floor TEXT DEFAULT '',
+      room TEXT DEFAULT '',
+      location TEXT DEFAULT '',
       email TEXT DEFAULT '',
       phone TEXT DEFAULT '',
-      location TEXT DEFAULT '',
       status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'on leave', 'detached')),
       needs_review INTEGER NOT NULL DEFAULT 0,
+      is_archived INTEGER NOT NULL DEFAULT 0,
       last_verified_at TEXT,
       notes TEXT DEFAULT '',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL
     );
 
     CREATE TABLE IF NOT EXISTS groups (
@@ -112,57 +161,271 @@ function seedData() {
       INSERT INTO users (username, password_hash, role, name)
       VALUES (?, ?, ?, ?)
     `);
-    
-    // admin / admin123 and viewer / viewer123
     const adminHash = bcrypt.hashSync('admin123', 10);
     const viewerHash = bcrypt.hashSync('viewer123', 10);
-    
     insertUser.run('admin', adminHash, 'admin', 'Alex Rivera (Admin)');
     insertUser.run('viewer', viewerHash, 'viewer', 'Jordan Lee (Viewer)');
   }
 
+  // Seed Units
+  const unitCount = db.prepare('SELECT COUNT(*) as count FROM units').get().count;
+  if (unitCount === 0) {
+    const insertUnit = db.prepare(`
+      INSERT INTO units (name, short_code, default_floor, description)
+      VALUES (?, ?, ?, ?)
+    `);
+    const units = [
+      ['Office of the Director', 'ODIR', '5th Floor', 'Executive management and overall office leadership'],
+      ['Operations Division', 'OPS', '3rd Floor', 'Core operational service delivery and program execution'],
+      ['Human Resources Management', 'HR', '2nd Floor', 'Personnel management, recruitment, and staff development'],
+      ['Finance & Budget Division', 'FIN', '3rd Floor', 'Financial management, budgeting, and accounting'],
+      ['Information Technology Services', 'IT', '2nd Floor', 'IT infrastructure, systems development, and helpdesk'],
+      ['Records & Archives Division', 'REC', 'Ground Floor', 'Official document archiving and record keeping'],
+      ['General Services Division', 'GSD', 'Basement', 'Logistics, physical facilities, security, and supply'],
+      ['Planning & Policy Division', 'PPD', '4th Floor', 'Strategic policy planning, monitoring, and evaluation']
+    ];
+    for (const u of units) {
+      insertUnit.run(...u);
+    }
+  }
+
+  // Seed Rooms
+  const roomCount = db.prepare('SELECT COUNT(*) as count FROM rooms').get().count;
+  if (roomCount === 0) {
+    const insertRoom = db.prepare('INSERT INTO rooms (name, floor) VALUES (?, ?)');
+    const sampleRooms = [
+      ['Archive Room 101', 'Ground Floor'],
+      ['Front Reception Desk', 'Ground Floor'],
+      ['Central File Vault', 'Ground Floor'],
+      ['HR Bay 2', '2nd Floor'],
+      ['HR Bay 4', '2nd Floor'],
+      ['IT Helpdesk Desk 1', '2nd Floor'],
+      ['Server Room Annex B', '2nd Floor'],
+      ['Desk 312', '3rd Floor'],
+      ['Finance Rm 301', '3rd Floor'],
+      ['Finance Rm 302', '3rd Floor'],
+      ['Operations Rm 305', '3rd Floor'],
+      ['Room 408', '4th Floor'],
+      ['Project Evaluation Bay 4', '4th Floor'],
+      ['Conference Hall A', '4th Floor'],
+      ['Suite 501', '5th Floor'],
+      ['Executive Board Room', '5th Floor'],
+      ['Supply Warehouse', 'Basement'],
+      ['Logistics Depo B', 'Basement'],
+      ['Facilities Workshop', 'Basement']
+    ];
+    for (const r of sampleRooms) {
+      insertRoom.run(...r);
+    }
+  }
+
+  // Seed Employees
   const employeeCount = db.prepare('SELECT COUNT(*) as count FROM employees').get().count;
   if (employeeCount === 0) {
     const insertEmp = db.prepare(`
-      INSERT INTO employees (full_name, position, unit, email, phone, location, status, needs_review, last_verified_at, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO employees (
+        full_name, position, unit_id, unit, unit_code, floor, room, location,
+        email, phone, status, needs_review, is_archived, last_verified_at, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
     `);
 
-    // Notice some have empty position/unit to showcase needs_review auto-flag!
-    const sampleEmployees = [
-      ['SANTOS, Maria C.', 'Senior Operations Officer', 'Operations Division', 'm.santos@office.gov', 'Ext. 401', '3rd Floor - Desk 312', 'active', 0, '2026-09-15', 'Lead contact for ISO audits'],
-      ['DELA CRUZ, Juan P.', 'Administrative Assistant', 'Human Resources', 'j.delacruz@office.gov', 'Ext. 102', '2nd Floor - HR Bay 4', 'active', 0, '2026-08-20', 'Onboarding coordinator'],
-      ['REYES, Antonio B.', 'Information Systems Analyst', 'IT Services', 'a.reyes@office.gov', 'Ext. 550', 'Server Room Annex B', 'active', 0, '2026-09-30', 'Network lead'],
-      ['GARCIA, Elena M.', 'Records Officer II', 'Records & Archives', 'e.garcia@office.gov', 'Ext. 204', 'Ground Floor - Archive Room', 'active', 0, '2026-07-10', ''],
-      ['BAUTISTA, Carlos R.', '', 'Finance & Budget', 'c.bautista@office.gov', 'Ext. 310', '3rd Floor - Finance Rm 302', 'active', 1, null, 'Transferred from Treasury; position pending confirmation'],
-      ['AQUINO, Patricia D.', 'Project Evaluation Officer', '', 'p.aquino@office.gov', 'Ext. 415', '4th Floor - Room 408', 'active', 1, null, 'Unit realignment pending management memo'],
-      ['MENDOZA, Roberto S.', 'Executive Director', 'Office of the Director', 'r.mendoza@office.gov', 'Ext. 100', '5th Floor - Suite 501', 'active', 0, '2026-10-01', 'Director'],
-      ['OCAMPO, Teresa V.', 'Senior Accountant', 'Finance & Budget', 't.ocampo@office.gov', 'Ext. 312', '3rd Floor - Finance Rm 301', 'on leave', 0, '2026-06-18', 'Maternity leave until Nov 2026'],
-      ['VILLANUEVA, Gabriel L.', 'IT Support Specialist', 'IT Services', 'g.villanueva@office.gov', 'Ext. 552', '2nd Floor - Helpdesk Desk 1', 'active', 0, '2026-09-12', 'Helpdesk shift lead'],
-      ['RAMOS, Sofia N.', '', '', 's.ramos@office.gov', 'Ext. 210', '1st Floor - Front Desk', 'active', 1, null, 'Newly appointed contractual staff, details incomplete'],
-      ['CRUZ, Dennis F.', 'Logistics Coordinator', 'General Services', 'd.cruz@office.gov', 'Ext. 120', 'Basement - Supply Warehouse', 'detached', 0, '2026-05-04', 'Detached to regional task force'],
-      ['FERNANDEZ, Clara T.', 'Human Resource Officer I', 'Human Resources', 'c.fernandez@office.gov', 'Ext. 105', '2nd Floor - HR Bay 2', 'active', 0, '2026-09-22', 'Training and development in-charge']
+    // Lookup unit helper
+    const getUnitInfo = (code) => {
+      if (!code) return { id: null, name: '', short_code: '' };
+      const row = db.prepare('SELECT id, name, short_code FROM units WHERE short_code = ?').get(code);
+      return row || { id: null, name: '', short_code: '' };
+    };
+
+    const rawEmployees = [
+      {
+        name: 'SANTOS, Maria C.',
+        position: 'Senior Operations Officer',
+        unitCode: 'OPS',
+        floor: '3rd Floor',
+        room: 'Desk 312',
+        email: 'm.santos@office.gov',
+        phone: 'Ext. 401',
+        status: 'active',
+        verified: '2026-09-15',
+        notes: 'Lead contact for ISO audits'
+      },
+      {
+        name: 'DELA CRUZ, Juan P.',
+        position: 'Administrative Assistant',
+        unitCode: 'HR',
+        floor: '2nd Floor',
+        room: 'HR Bay 4',
+        email: 'j.delacruz@office.gov',
+        phone: 'Ext. 102',
+        status: 'active',
+        verified: '2026-08-20',
+        notes: 'Onboarding coordinator'
+      },
+      {
+        name: 'REYES, Antonio B.',
+        position: 'Information Systems Analyst',
+        unitCode: 'IT',
+        floor: '2nd Floor',
+        room: 'Server Room Annex B',
+        email: 'a.reyes@office.gov',
+        phone: 'Ext. 550',
+        status: 'active',
+        verified: '2026-09-30',
+        notes: 'Network & cybersecurity lead'
+      },
+      {
+        name: 'GARCIA, Elena M.',
+        position: 'Records Officer II',
+        unitCode: 'REC',
+        floor: 'Ground Floor',
+        room: 'Archive Room 101',
+        email: 'e.garcia@office.gov',
+        phone: 'Ext. 204',
+        status: 'active',
+        verified: '2026-07-10',
+        notes: ''
+      },
+      {
+        // Missing position -> needs_review = 1
+        name: 'BAUTISTA, Carlos R.',
+        position: '',
+        unitCode: 'FIN',
+        floor: '3rd Floor',
+        room: 'Finance Rm 302',
+        email: 'c.bautista@office.gov',
+        phone: 'Ext. 310',
+        status: 'active',
+        verified: null,
+        notes: 'Transferred from Treasury; position pending confirmation'
+      },
+      {
+        // Missing unit -> needs_review = 1
+        name: 'AQUINO, Patricia D.',
+        position: 'Project Evaluation Officer',
+        unitCode: '',
+        floor: '4th Floor',
+        room: 'Room 408',
+        email: 'p.aquino@office.gov',
+        phone: 'Ext. 415',
+        status: 'active',
+        verified: null,
+        notes: 'Unit realignment pending management memo'
+      },
+      {
+        name: 'MENDOZA, Roberto S.',
+        position: 'Executive Director',
+        unitCode: 'ODIR',
+        floor: '5th Floor',
+        room: 'Suite 501',
+        email: 'r.mendoza@office.gov',
+        phone: 'Ext. 100',
+        status: 'active',
+        verified: '2026-10-01',
+        notes: 'Agency Executive Director'
+      },
+      {
+        // Status on leave
+        name: 'OCAMPO, Teresa V.',
+        position: 'Senior Accountant',
+        unitCode: 'FIN',
+        floor: '3rd Floor',
+        room: 'Finance Rm 301',
+        email: 't.ocampo@office.gov',
+        phone: 'Ext. 312',
+        status: 'on leave',
+        verified: '2026-06-18',
+        notes: 'Maternity leave until Nov 2026'
+      },
+      {
+        // Location mismatch for soft warning demo: IT unit default is 2nd Floor, but stationed at 4th Floor!
+        name: 'VILLANUEVA, Gabriel L.',
+        position: 'IT Support Specialist',
+        unitCode: 'IT',
+        floor: '4th Floor',
+        room: 'Room 408',
+        email: 'g.villanueva@office.gov',
+        phone: 'Ext. 552',
+        status: 'active',
+        verified: '2026-09-12',
+        notes: 'Deployed to 4th floor project office for tech support'
+      },
+      {
+        // Missing both position and unit -> needs_review = 1
+        name: 'RAMOS, Sofia N.',
+        position: '',
+        unitCode: '',
+        floor: 'Ground Floor',
+        room: 'Front Reception Desk',
+        email: 's.ramos@office.gov',
+        phone: 'Ext. 210',
+        status: 'active',
+        verified: null,
+        notes: 'Newly appointed contractual staff, details incomplete'
+      },
+      {
+        // Status detached
+        name: 'CRUZ, Dennis F.',
+        position: 'Logistics Coordinator',
+        unitCode: 'GSD',
+        floor: 'Basement',
+        room: 'Supply Warehouse',
+        email: 'd.cruz@office.gov',
+        phone: 'Ext. 120',
+        status: 'detached',
+        verified: '2026-05-04',
+        notes: 'Detached to regional emergency task force'
+      },
+      {
+        name: 'FERNANDEZ, Clara T.',
+        position: 'Human Resource Officer I',
+        unitCode: 'HR',
+        floor: '2nd Floor',
+        room: 'HR Bay 2',
+        email: 'c.fernandez@office.gov',
+        phone: 'Ext. 105',
+        status: 'active',
+        verified: '2026-09-22',
+        notes: 'Training and talent development lead'
+      }
     ];
 
-    for (const emp of sampleEmployees) {
-      insertEmp.run(...emp);
+    for (const emp of rawEmployees) {
+      const u = getUnitInfo(emp.unitCode);
+      const loc = formatLocation(emp.floor, emp.room);
+      const needsRev = (!emp.position || !u.name) ? 1 : 0;
+      insertEmp.run(
+        emp.name,
+        emp.position,
+        u.id,
+        u.name,
+        u.short_code,
+        emp.floor,
+        emp.room,
+        loc,
+        emp.email,
+        emp.phone,
+        emp.status,
+        needsRev,
+        emp.verified,
+        emp.notes
+      );
     }
 
     // Groups
     const insertGroup = db.prepare('INSERT INTO groups (name, type, description) VALUES (?, ?, ?)');
     const g1 = insertGroup.run('Batch 2026 Q1 Induction', 'training batch', 'New hires and mandatory civil service orientation').lastInsertRowid;
-    const g2 = insertGroup.run('Digital Transformation Committee', 'committee', 'Oversees migration to paperless directory and workflows').lastInsertRowid;
+    const g2 = insertGroup.run('Digital Transformation Committee', 'committee', 'Oversees paperless directory migration and digital workflows').lastInsertRowid;
     const g3 = insertGroup.run('Emergency Response Team', 'team', 'Floor marshals and first-aid response team').lastInsertRowid;
     const g4 = insertGroup.run('Quarterly ISO Audit Taskforce', 'other', 'Internal audit team for Q3/Q4 ISO review').lastInsertRowid;
 
     // Member links
     const insertMember = db.prepare('INSERT INTO employee_groups (employee_id, group_id) VALUES (?, ?)');
     insertMember.run(1, g2); // Maria Santos in IT committee
-    insertMember.run(1, g4); // Maria Santos in ISO taskforce
+    insertMember.run(1, g4); // Maria Santos in ISO taskforce (multi-group)
     insertMember.run(2, g1); // Juan Dela Cruz in Batch
     insertMember.run(3, g2); // Antonio Reyes in IT committee
     insertMember.run(9, g2); // Gabriel Villanueva in IT committee
-    insertMember.run(9, g3); // Gabriel in Emergency Team
+    insertMember.run(9, g3); // Gabriel in Emergency Team (multi-group)
     insertMember.run(12, g1); // Clara Fernandez in Induction
 
     // Training records
@@ -188,6 +451,8 @@ seedData();
 
 module.exports = {
   db,
+  formatLocation,
+  parseLocation,
   calculateQuarter,
   logAudit
 };

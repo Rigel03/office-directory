@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Search, Filter, Plus, Upload, Download, AlertTriangle,
-  RotateCcw, CheckCircle2, FileSpreadsheet, Building2
+  RotateCcw, Building2, ChevronDown, Archive, Users, CheckCircle,
+  FileSpreadsheet, FileText, Check
 } from 'lucide-react';
 import { api } from '../../api';
 import { useAuth } from '../../context/AuthContext';
@@ -12,18 +13,28 @@ import { BulkActionBar } from './BulkActionBar';
 import { AuditModal } from './AuditModal';
 import { ImportModal } from '../Import/ImportModal';
 import { ConfirmDialog } from '../Common/ConfirmDialog';
-import { DirectoryTabManager } from './DirectoryTabManager';
 import { ColumnManager, ALL_COLUMNS } from './ColumnManager';
 
 export function DirectoryView({ onNavigateToUnits }) {
   const { isAdmin } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [units, setUnits] = useState([]);
+  const [rooms, setRooms] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Directory Tabs State
-  const [activeTabId, setActiveTabId] = useState('all');
+  // Quick views tabs (Spec 4: All Staff, Needs Review, On Leave, Detached, Archived)
+  const [activeTab, setActiveTab] = useState('all');
+
+  // Single source of truth for counts (Spec 4)
+  const [summaryCounts, setSummaryCounts] = useState({
+    total: 0,
+    active: 0,
+    on_leave: 0,
+    detached: 0,
+    needs_review: 0,
+    archived: 0
+  });
 
   // Dynamic Columns State
   const [columns, setColumns] = useState(() => {
@@ -40,72 +51,90 @@ export function DirectoryView({ onNavigateToUnits }) {
     } catch (e) {}
   }, [columns]);
 
+  // Density Toggle: comfortable vs compact (Spec 6)
+  const [density, setDensity] = useState(() => {
+    return localStorage.getItem('directory_table_density') || 'comfortable';
+  });
+
+  const handleToggleDensity = (newDensity) => {
+    setDensity(newDensity);
+    localStorage.setItem('directory_table_density', newDensity);
+  };
+
   // Search & Filter State
   const [search, setSearch] = useState('');
   const [selectedUnit, setSelectedUnit] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
-  const [filterNeedsReview, setFilterNeedsReview] = useState(false);
   const [sortBy, setSortBy] = useState('full_name');
   const [sortOrder, setSortOrder] = useState('asc');
 
   // Selection
   const [selectedIds, setSelectedIds] = useState([]);
+  const [allFilteredSelected, setAllFilteredSelected] = useState(false);
 
-  // Modals
+  // Modals & Dialogs
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [auditEmployee, setAuditEmployee] = useState(null);
-  const [deleteConfirmEmp, setDeleteConfirmEmp] = useState(null);
-  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
-  // Tab counts
-  const [tabCounts, setTabCounts] = useState({});
+  // Archive & Delete Confirmation Dialogs (Spec 8)
+  const [archiveTargetEmp, setArchiveTargetEmp] = useState(null);
+  const [deleteConfirmEmp, setDeleteConfirmEmp] = useState(null);
+  const [bulkActionConfirm, setBulkActionConfirm] = useState(null); // { type: 'archive'|'delete'|'restore', count: N }
+
+  const loadSummaryCounts = async () => {
+    try {
+      const res = await api.getEmployeesSummary();
+      setSummaryCounts(res);
+    } catch (err) {
+      console.error('Failed to load summary counts:', err);
+    }
+  };
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [empList, unitList, groupList, allEmpForCounts] = await Promise.all([
-        api.getEmployees({
-          search,
-          unit: selectedUnit,
-          groupId: selectedGroupId,
-          status: selectedStatus,
-          needsReview: filterNeedsReview ? 'true' : '',
-          sortBy,
-          sortOrder
-        }),
-        api.getUnits(),
-        api.getGroups(),
-        api.getEmployees({}) // unscoped to compute tab badge counts
-      ]);
-      setEmployees(empList);
-      setUnits(unitList);
-      setGroups(groupList);
-
-      // Compute counts for quick tabs
-      const counts = {
-        all: allEmpForCounts.length,
-        needs_review: allEmpForCounts.filter(e => e.needs_review).length,
-        active: allEmpForCounts.filter(e => e.status === 'active').length,
-        on_leave: allEmpForCounts.filter(e => e.status === 'on leave').length,
-        detached: allEmpForCounts.filter(e => e.status === 'detached').length,
-        unit_hr: allEmpForCounts.filter(e => e.unit === 'Human Resources').length,
-        unit_ops: allEmpForCounts.filter(e => e.unit === 'Operations Division').length,
-        unit_it: allEmpForCounts.filter(e => e.unit === 'IT Services').length,
-        unit_finance: allEmpForCounts.filter(e => e.unit === 'Finance & Budget').length
+      const params = {
+        search,
+        unit: selectedUnit,
+        groupId: selectedGroupId,
+        sortBy,
+        sortOrder
       };
 
-      // Custom unit tabs
-      unitList.forEach(u => {
-        counts[u] = allEmpForCounts.filter(e => e.unit === u).length;
-      });
+      // Quick-view tab filter
+      if (activeTab === 'archived') {
+        params.archived = 'true';
+      } else if (activeTab === 'needs_review') {
+        params.tab = 'needs_review';
+      } else if (activeTab === 'on_leave') {
+        params.tab = 'on_leave';
+      } else if (activeTab === 'detached') {
+        params.tab = 'detached';
+      }
 
-      setTabCounts(counts);
+      if (selectedStatus && activeTab === 'all') {
+        params.status = selectedStatus;
+      }
+
+      const [empList, unitList, roomList, groupList] = await Promise.all([
+        api.getEmployees(params),
+        api.getUnits(),
+        api.getRooms(),
+        api.getGroups(),
+        loadSummaryCounts()
+      ]);
+
+      setEmployees(empList);
+      setUnits(unitList);
+      setRooms(roomList);
+      setGroups(groupList);
     } catch (err) {
-      console.error(err);
+      console.error('Load directory data error:', err);
     } finally {
       setLoading(false);
     }
@@ -113,32 +142,9 @@ export function DirectoryView({ onNavigateToUnits }) {
 
   useEffect(() => {
     loadData();
-  }, [search, selectedUnit, selectedGroupId, selectedStatus, filterNeedsReview, sortBy, sortOrder]);
-
-  const handleSelectDirectoryTab = (tab) => {
-    setActiveTabId(tab.id);
-    if (tab.id === 'all') {
-      setSelectedUnit('');
-      setSelectedStatus('');
-      setFilterNeedsReview(false);
-    } else if (tab.id === 'needs_review') {
-      setSelectedUnit('');
-      setSelectedStatus('');
-      setFilterNeedsReview(true);
-    } else if (tab.filter?.needsReview) {
-      setSelectedUnit('');
-      setSelectedStatus('');
-      setFilterNeedsReview(true);
-    } else if (tab.filter?.status) {
-      setSelectedUnit('');
-      setSelectedStatus(tab.filter.status);
-      setFilterNeedsReview(false);
-    } else if (tab.filter?.unit) {
-      setSelectedUnit(tab.filter.unit);
-      setSelectedStatus('');
-      setFilterNeedsReview(false);
-    }
-  };
+    setSelectedIds([]);
+    setAllFilteredSelected(false);
+  }, [activeTab, search, selectedUnit, selectedGroupId, selectedStatus, sortBy, sortOrder]);
 
   const handleSort = (column) => {
     if (sortBy === column) {
@@ -150,19 +156,36 @@ export function DirectoryView({ onNavigateToUnits }) {
   };
 
   const handleToggleSelect = (id) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
+    setSelectedIds(prev => {
+      const updated = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      setAllFilteredSelected(updated.length === employees.length && employees.length > 0);
+      return updated;
+    });
   };
 
-  const handleToggleSelectAll = () => {
-    const allIds = employees.map(e => e.id);
-    const areAllSelected = allIds.length > 0 && allIds.every(id => selectedIds.includes(id));
-    if (areAllSelected) {
-      setSelectedIds([]);
+  const handleToggleSelectAll = (pageIds) => {
+    const allPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.includes(id));
+    if (allPageSelected) {
+      setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)));
+      setAllFilteredSelected(false);
     } else {
-      setSelectedIds(allIds);
+      const merged = Array.from(new Set([...selectedIds, ...pageIds]));
+      setSelectedIds(merged);
+      setAllFilteredSelected(merged.length === employees.length);
     }
+  };
+
+  const handleSelectAllFiltered = () => {
+    setSelectedIds(employees.map(e => e.id));
+    setAllFilteredSelected(true);
+  };
+
+  const handleClearFilters = () => {
+    setSearch('');
+    setSelectedUnit('');
+    setSelectedGroupId('');
+    setSelectedStatus('');
+    setActiveTab('all');
   };
 
   const handleSaveEmployee = async (formData, id) => {
@@ -171,30 +194,52 @@ export function DirectoryView({ onNavigateToUnits }) {
     } else {
       await api.createEmployee(formData);
     }
-    loadData();
+    await loadData();
+    await loadSummaryCounts();
   };
 
   const handleInlineUpdate = async (id, field, value) => {
     await api.patchInline(id, field, value);
-    loadData();
+    await loadData();
+    await loadSummaryCounts();
   };
 
-  const handleVerify = async (id) => {
-    await api.verifyEmployee(id);
-    loadData();
+  // Archive & Soft Delete Handlers (Spec 8)
+  const handleArchiveSingle = async () => {
+    if (!archiveTargetEmp) return;
+    try {
+      await api.archiveEmployee(archiveTargetEmp.id);
+      setArchiveTargetEmp(null);
+      await loadData();
+      await loadSummaryCounts();
+    } catch (err) {
+      alert('Failed to archive employee: ' + err.message);
+    }
   };
 
-  const handleDeleteEmployee = async () => {
+  const handleRestoreSingle = async (emp) => {
+    try {
+      await api.restoreEmployee(emp.id);
+      await loadData();
+      await loadSummaryCounts();
+    } catch (err) {
+      alert('Failed to restore employee: ' + err.message);
+    }
+  };
+
+  const handleDeletePermanent = async () => {
     if (!deleteConfirmEmp) return;
     try {
       await api.deleteEmployee(deleteConfirmEmp.id);
       setDeleteConfirmEmp(null);
-      loadData();
+      await loadData();
+      await loadSummaryCounts();
     } catch (err) {
-      alert('Failed to delete employee: ' + err.message);
+      alert('Failed to permanently delete employee: ' + err.message);
     }
   };
 
+  // Bulk Handlers (Spec 7)
   const handleBulkMoveUnit = async (targetUnit) => {
     try {
       await api.bulkEmployees({
@@ -203,7 +248,8 @@ export function DirectoryView({ onNavigateToUnits }) {
         ids: selectedIds
       });
       setSelectedIds([]);
-      loadData();
+      await loadData();
+      await loadSummaryCounts();
     } catch (err) {
       alert('Failed to move unit: ' + err.message);
     }
@@ -217,54 +263,88 @@ export function DirectoryView({ onNavigateToUnits }) {
         ids: selectedIds
       });
       setSelectedIds([]);
-      loadData();
+      await loadData();
     } catch (err) {
       alert('Failed to add to group: ' + err.message);
     }
   };
 
-  const handleBulkVerify = async () => {
+  const handleBulkRemoveFromGroup = async (targetGroupId) => {
     try {
       await api.bulkEmployees({
-        action: 'verify',
+        action: 'remove_group',
+        targetGroupId,
         ids: selectedIds
       });
       setSelectedIds([]);
-      loadData();
+      await loadData();
     } catch (err) {
-      alert('Failed to verify records: ' + err.message);
+      alert('Failed to remove from group: ' + err.message);
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkArchive = async () => {
+    try {
+      await api.bulkEmployees({
+        action: 'archive',
+        ids: selectedIds
+      });
+      setBulkActionConfirm(null);
+      setSelectedIds([]);
+      await loadData();
+      await loadSummaryCounts();
+    } catch (err) {
+      alert('Failed to bulk archive: ' + err.message);
+    }
+  };
+
+  const handleBulkRestore = async () => {
+    try {
+      await api.bulkEmployees({
+        action: 'restore',
+        ids: selectedIds
+      });
+      setBulkActionConfirm(null);
+      setSelectedIds([]);
+      await loadData();
+      await loadSummaryCounts();
+    } catch (err) {
+      alert('Failed to bulk restore: ' + err.message);
+    }
+  };
+
+  const handleBulkPermanentDelete = async () => {
     try {
       await api.bulkEmployees({
         action: 'delete',
         ids: selectedIds
       });
-      setBulkDeleteConfirm(false);
+      setBulkActionConfirm(null);
       setSelectedIds([]);
-      loadData();
+      await loadData();
+      await loadSummaryCounts();
     } catch (err) {
       alert('Failed to bulk delete: ' + err.message);
     }
   };
 
-  const handleExportDirectory = async (format) => {
+  // Export dropdown handler (Spec 9)
+  const handleExport = async (format) => {
+    setShowExportMenu(false);
     try {
       const blob = await api.exportEmployeesBlob({
         search,
         unit: selectedUnit,
         groupId: selectedGroupId,
-        status: selectedStatus,
-        needsReview: filterNeedsReview ? 'true' : '',
+        status: activeTab === 'all' ? selectedStatus : '',
+        tab: activeTab,
         ids: selectedIds.length > 0 ? selectedIds.join(',') : '',
         format
       });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Employee_Directory_${new Date().toISOString().slice(0, 10)}.${format}`;
+      a.download = `Staff_Directory_${new Date().toISOString().slice(0, 10)}.${format}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -275,95 +355,130 @@ export function DirectoryView({ onNavigateToUnits }) {
   };
 
   const selectedEmployeeObjects = employees.filter(e => selectedIds.includes(e.id));
-  const reviewCount = tabCounts.needs_review || 0;
+  const isArchivedView = activeTab === 'archived';
+
+  // Quick view tab definition (Spec 4)
+  const QUICK_TABS = [
+    { id: 'all', label: 'All Staff', count: summaryCounts.total },
+    { id: 'needs_review', label: 'Needs Review', count: summaryCounts.needs_review, isAlert: summaryCounts.needs_review > 0 },
+    { id: 'on_leave', label: 'On Leave', count: summaryCounts.on_leave },
+    { id: 'detached', label: 'Detached', count: summaryCounts.detached },
+    { id: 'archived', label: 'Archived', count: summaryCounts.archived, isArchive: true }
+  ];
 
   return (
     <div className="space-y-4">
-      {/* 1. CUSTOMIZABLE DIRECTORY TABS BAR */}
-      <DirectoryTabManager
-        activeTabId={activeTabId}
-        onSelectTab={handleSelectDirectoryTab}
-        units={units}
-        groups={groups}
-        tabCounts={tabCounts}
-      />
+      {/* 1. QUICK VIEWS TAB ROW (Spec 4) */}
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1">
+          {QUICK_TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
 
-      {/* 2. SEARCH AND ACTION BAR */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-colors">
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (tab.id !== 'all') setSelectedStatus('');
+                }}
+                className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                  isActive
+                    ? 'bg-indigo-700 text-indigo-100'
+                    : tab.isAlert
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 2. RESPONSIVE TOOLBAR (Spec 9) */}
+      <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors">
         {/* Search Input */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400 dark:text-slate-500" />
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
-            placeholder="Search by name, position, unit, email, desk..."
+            placeholder="Search name, position, unit, location, email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
-        {/* Buttons */}
+        {/* Action Buttons: Columns, Single Export Dropdown, Import, New Employee */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Column Customizer (Move & Choose Columns to Show) */}
+          {/* Columns Manager */}
           <ColumnManager columns={columns} onColumnsChange={setColumns} />
 
-          {/* Missing Info Quick Filter Pill */}
-          <button
-            onClick={() => setFilterNeedsReview(prev => !prev)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
-              filterNeedsReview
-                ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900 hover:bg-rose-100 dark:hover:bg-rose-900/60'
-            }`}
-          >
-            <AlertTriangle className="w-3.5 h-3.5" />
-            <span>Missing Info</span>
-            {reviewCount > 0 && (
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                filterNeedsReview ? 'bg-white text-rose-700' : 'bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200'
-              }`}>
-                {reviewCount}
-              </span>
+          {/* Single Combined Export Dropdown (Spec 9) */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              title="Export filtered directory"
+            >
+              <Download className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Export</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-30 animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  onClick={() => handleExport('xlsx')}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>Export to Excel (.xlsx)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport('csv')}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer border-t border-slate-100 dark:border-slate-700"
+                >
+                  <FileText className="w-4 h-4 text-sky-600" />
+                  <span>Export to CSV (.csv)</span>
+                </button>
+              </div>
             )}
-          </button>
+          </div>
 
-          {/* Export Dropdown / Button */}
-          <button
-            onClick={() => handleExportDirectory('xlsx')}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 cursor-pointer shadow-2xs"
-            title="Export filtered directory to Excel"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Export Excel</span>
-          </button>
-          <button
-            onClick={() => handleExportDirectory('csv')}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-            title="Export filtered directory to CSV"
-          >
-            <Download className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-            <span>CSV</span>
-          </button>
-
-          {/* Import Button (Admin only) */}
+          {/* Import Spreadsheet (Admin only) */}
           {isAdmin && (
             <button
+              type="button"
               onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-900 dark:hover:bg-slate-600 cursor-pointer shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer shadow-2xs"
             >
-              <Upload className="w-3.5 h-3.5" />
-              <span>Import Spreadsheet</span>
+              <Upload className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+              <span className="hidden sm:inline">Import Spreadsheet</span>
             </button>
           )}
 
-          {/* Add Employee Button (Admin only) */}
+          {/* New Employee - The Primary Styled Button (Spec 9) */}
           {isAdmin && (
             <button
+              type="button"
               onClick={() => {
                 setEditingEmployee(null);
                 setShowEmployeeModal(true);
               }}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer shadow-xs"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>New Employee</span>
@@ -372,35 +487,34 @@ export function DirectoryView({ onNavigateToUnits }) {
         </div>
       </div>
 
-      {/* 3. FILTER RIBBON */}
-      <div className="bg-slate-50/70 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs flex-wrap transition-colors">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-semibold">
+      {/* 3. FILTER RIBBON (Spec 3 & 4) */}
+      <div className="bg-slate-50/80 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs flex-wrap transition-colors">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-semibold">
             <Filter className="w-3.5 h-3.5" />
             <span>Filters:</span>
           </div>
 
-          {/* Unit Filter with shortcut */}
+          {/* Managed Units / Divisions Dropdown (Spec 3) */}
           <div className="flex items-center gap-1">
             <select
               value={selectedUnit}
-              onChange={(e) => {
-                setSelectedUnit(e.target.value);
-                setActiveTabId('');
-              }}
-              className="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 font-medium"
+              onChange={(e) => setSelectedUnit(e.target.value)}
+              className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 font-medium"
             >
               <option value="">All Units / Divisions</option>
               {units.map(u => (
-                <option key={u} value={u}>{u}</option>
+                <option key={u.id || u.name} value={u.name}>
+                  [{u.short_code}] {u.name}
+                </option>
               ))}
             </select>
             {isAdmin && onNavigateToUnits && (
               <button
                 type="button"
                 onClick={onNavigateToUnits}
-                title="Edit / Rename Divisions & Units"
-                className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg"
+                title="Manage Units & Divisions"
+                className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg"
               >
                 <Building2 className="w-3.5 h-3.5" />
               </button>
@@ -410,11 +524,8 @@ export function DirectoryView({ onNavigateToUnits }) {
           {/* Group Filter */}
           <select
             value={selectedGroupId}
-            onChange={(e) => {
-              setSelectedGroupId(e.target.value);
-              setActiveTabId('');
-            }}
-            className="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 font-medium"
+            onChange={(e) => setSelectedGroupId(e.target.value)}
+            className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 font-medium"
           >
             <option value="">All Groups</option>
             {groups.map(g => (
@@ -422,33 +533,26 @@ export function DirectoryView({ onNavigateToUnits }) {
             ))}
           </select>
 
-          {/* Status Filter */}
-          <select
-            value={selectedStatus}
-            onChange={(e) => {
-              setSelectedStatus(e.target.value);
-              setActiveTabId('');
-            }}
-            className="px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 font-medium"
-          >
-            <option value="">All Employment Statuses</option>
-            <option value="active">Active</option>
-            <option value="on leave">On Leave</option>
-            <option value="detached">Detached</option>
-          </select>
+          {/* Employment Status Filter (only shown on All Staff tab) */}
+          {activeTab === 'all' && (
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 font-medium"
+            >
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="on leave">On Leave</option>
+              <option value="detached">Detached</option>
+            </select>
+          )}
 
-          {/* Reset Filters */}
-          {(selectedUnit || selectedGroupId || selectedStatus || filterNeedsReview || search) && (
+          {/* Reset Filters button */}
+          {(selectedUnit || selectedGroupId || selectedStatus || search) && (
             <button
-              onClick={() => {
-                setSelectedUnit('');
-                setSelectedGroupId('');
-                setSelectedStatus('');
-                setFilterNeedsReview(false);
-                setSearch('');
-                setActiveTabId('all');
-              }}
-              className="flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold px-2 py-1 rounded hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
+              type="button"
+              onClick={handleClearFilters}
+              className="flex items-center gap-1 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold px-2 py-1 rounded hover:bg-slate-200/60 dark:hover:bg-slate-800 cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />
               Reset Filters
@@ -456,14 +560,16 @@ export function DirectoryView({ onNavigateToUnits }) {
           )}
         </div>
 
-        <div className="text-slate-500 dark:text-slate-400 font-medium">
-          Showing <span className="font-bold text-slate-800 dark:text-slate-200">{employees.length}</span> staff records
+        {/* Showing N staff records label (Spec 4 & Testing) */}
+        <div className="text-slate-600 dark:text-slate-400 font-medium text-xs">
+          Showing <span className="font-bold text-slate-900 dark:text-slate-100">{employees.length}</span> staff records
         </div>
       </div>
 
-      {/* 4. DIRECTORY TABLE WITH DYNAMIC COLUMNS */}
+      {/* 4. DIRECTORY TABLE WITH DENSITY & STICKY HEADER (Spec 5 & 6) */}
       <EmployeeTable
         employees={employees}
+        totalCount={employees.length}
         selectedIds={selectedIds}
         columns={columns}
         onToggleSelect={handleToggleSelect}
@@ -477,28 +583,40 @@ export function DirectoryView({ onNavigateToUnits }) {
         }}
         onViewAudit={(emp) => setAuditEmployee(emp)}
         onInlineUpdate={handleInlineUpdate}
-        onVerify={handleVerify}
+        onArchive={(emp) => setArchiveTargetEmp(emp)}
+        onRestore={handleRestoreSingle}
         onDelete={(emp) => setDeleteConfirmEmp(emp)}
+        onClearFilters={handleClearFilters}
+        isArchivedView={isArchivedView}
+        density={density}
+        onToggleDensity={handleToggleDensity}
+        loading={loading}
       />
 
-      {/* Floating Bulk Action Bar */}
+      {/* 5. FLOATING BULK ACTIONS BAR (Spec 7) */}
       <BulkActionBar
         selectedIds={selectedIds}
-        selectedEmployees={selectedEmployeeObjects}
+        totalFilteredCount={employees.length}
+        allFilteredSelected={allFilteredSelected}
+        onSelectAllFiltered={handleSelectAllFiltered}
         units={units}
         groups={groups}
-        onClearSelection={() => setSelectedIds([])}
+        onClearSelection={() => {
+          setSelectedIds([]);
+          setAllFilteredSelected(false);
+        }}
         onOpenCopyModal={() => setShowCopyModal(true)}
         onMoveToUnit={handleBulkMoveUnit}
         onAddToGroup={handleBulkAddToGroup}
-        onVerifySelected={handleBulkVerify}
-        onDeleteSelected={() => setBulkDeleteConfirm(true)}
-        onAddTraining={() => {
-          alert('Switch to the Training & Reports tab to record group training, or select a group in Groups view.');
-        }}
+        onRemoveFromGroup={handleBulkRemoveFromGroup}
+        onExportSelected={() => handleExport('xlsx')}
+        isArchivedTab={isArchivedView}
+        onArchiveSelected={() => setBulkActionConfirm({ type: 'archive', count: selectedIds.length })}
+        onRestoreSelected={() => setBulkActionConfirm({ type: 'restore', count: selectedIds.length })}
+        onDeleteSelected={() => setBulkActionConfirm({ type: 'delete', count: selectedIds.length })}
       />
 
-      {/* MODAL: Employee Add/Edit */}
+      {/* MODAL: Employee Add/Edit (Spec 2 & 3) */}
       <EmployeeModal
         isOpen={showEmployeeModal}
         onClose={() => {
@@ -508,6 +626,8 @@ export function DirectoryView({ onNavigateToUnits }) {
         onSave={handleSaveEmployee}
         employee={editingEmployee}
         availableGroups={groups}
+        availableUnits={units}
+        availableRooms={rooms}
       />
 
       {/* MODAL: Quick Copy formats for Word/Excel */}
@@ -521,7 +641,10 @@ export function DirectoryView({ onNavigateToUnits }) {
       <ImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
-        onImportComplete={loadData}
+        onImportComplete={async () => {
+          await loadData();
+          await loadSummaryCounts();
+        }}
       />
 
       {/* MODAL: Record Audit Trail */}
@@ -531,24 +654,38 @@ export function DirectoryView({ onNavigateToUnits }) {
         employee={auditEmployee}
       />
 
-      {/* Delete Single Employee Confirm */}
+      {/* Archive Single Employee Confirmation Dialog (Spec 8) */}
+      <ConfirmDialog
+        isOpen={Boolean(archiveTargetEmp)}
+        title="Archive Employee Record"
+        message={`Are you sure you want to archive ${archiveTargetEmp?.full_name}? The employee will be hidden from the active directory and moved to the Archived view. You can restore them anytime.`}
+        confirmText="Archive Employee"
+        onConfirm={handleArchiveSingle}
+        onCancel={() => setArchiveTargetEmp(null)}
+      />
+
+      {/* Delete Single Employee Permanently Confirmation Dialog (Spec 8) */}
       <ConfirmDialog
         isOpen={Boolean(deleteConfirmEmp)}
-        title="Delete Employee Record"
-        message={`Are you sure you want to delete ${deleteConfirmEmp?.full_name}? All associated group assignments and training records will also be removed.`}
-        confirmText="Delete Employee"
-        onConfirm={handleDeleteEmployee}
+        title="Permanently Delete Employee"
+        message={`Are you sure you want to permanently delete ${deleteConfirmEmp?.full_name}? This cannot be undone.`}
+        confirmText="Delete Permanently"
+        onConfirm={handleDeletePermanent}
         onCancel={() => setDeleteConfirmEmp(null)}
       />
 
-      {/* Delete Bulk Confirm */}
+      {/* Bulk Action Confirmation Dialog (Spec 7 & 8) */}
       <ConfirmDialog
-        isOpen={bulkDeleteConfirm}
-        title={`Delete ${selectedIds.length} Selected Records`}
-        message={`Are you sure you want to delete ${selectedIds.length} employee records permanently? This action will be recorded in the audit trail.`}
-        confirmText="Delete All Selected"
-        onConfirm={handleBulkDelete}
-        onCancel={() => setBulkDeleteConfirm(false)}
+        isOpen={Boolean(bulkActionConfirm)}
+        title={`${bulkActionConfirm?.type === 'archive' ? 'Archive' : bulkActionConfirm?.type === 'restore' ? 'Restore' : 'Delete'} ${bulkActionConfirm?.count} Records`}
+        message={`Are you sure you want to ${bulkActionConfirm?.type} ${bulkActionConfirm?.count} selected employee records?`}
+        confirmText={`${bulkActionConfirm?.type === 'archive' ? 'Archive' : bulkActionConfirm?.type === 'restore' ? 'Restore' : 'Delete'} Selected`}
+        onConfirm={() => {
+          if (bulkActionConfirm?.type === 'archive') handleBulkArchive();
+          else if (bulkActionConfirm?.type === 'restore') handleBulkRestore();
+          else if (bulkActionConfirm?.type === 'delete') handleBulkPermanentDelete();
+        }}
+        onCancel={() => setBulkActionConfirm(null)}
       />
     </div>
   );

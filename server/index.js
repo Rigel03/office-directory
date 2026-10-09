@@ -11,8 +11,10 @@ const groupRoutes = require('./routes/groups');
 const trainingRoutes = require('./routes/training');
 const importRoutes = require('./routes/import');
 const exportRoutes = require('./routes/export');
+const unitRoutes = require('./routes/units');
 
 const app = express();
+
 const PORT = process.env.PORT || 4000;
 
 app.use(cors({
@@ -30,6 +32,7 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/training', trainingRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/export', exportRoutes);
+app.use('/api/units', unitRoutes);
 
 // General Audit logs endpoint
 app.get('/api/audit-logs', authMiddleware, (req, res) => {
