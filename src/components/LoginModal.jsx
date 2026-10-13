@@ -35,9 +35,9 @@ export function LoginModal() {
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col justify-center items-center p-4">
-      <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+      <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border-0 dark:border dark:border-zinc-800/80 overflow-hidden">
         {/* Banner */}
-        <div className="p-8 text-center bg-zinc-900 text-white relative border-b border-zinc-800">
+        <div className="p-8 text-center bg-zinc-900 text-white relative">
           <div className="w-14 h-14 bg-white text-zinc-950 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md">
             <Building2 className="w-7 h-7" />
           </div>
