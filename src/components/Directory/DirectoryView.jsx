@@ -64,6 +64,7 @@ export function DirectoryView({ onNavigateToUnits }) {
   // Search & Filter State
   const [search, setSearch] = useState('');
   const [selectedUnit, setSelectedUnit] = useState('');
+  const [selectedSection, setSelectedSection] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [sortBy, setSortBy] = useState('full_name');
@@ -101,6 +102,7 @@ export function DirectoryView({ onNavigateToUnits }) {
       const params = {
         search,
         unit: selectedUnit,
+        section: selectedSection,
         groupId: selectedGroupId,
         sortBy,
         sortOrder
@@ -144,7 +146,7 @@ export function DirectoryView({ onNavigateToUnits }) {
     loadData();
     setSelectedIds([]);
     setAllFilteredSelected(false);
-  }, [activeTab, search, selectedUnit, selectedGroupId, selectedStatus, sortBy, sortOrder]);
+  }, [activeTab, search, selectedUnit, selectedSection, selectedGroupId, selectedStatus, sortBy, sortOrder]);
 
   const handleSort = (column) => {
     if (sortBy === column) {
@@ -183,6 +185,7 @@ export function DirectoryView({ onNavigateToUnits }) {
   const handleClearFilters = () => {
     setSearch('');
     setSelectedUnit('');
+    setSelectedSection('');
     setSelectedGroupId('');
     setSelectedStatus('');
     setActiveTab('all');
@@ -357,6 +360,10 @@ export function DirectoryView({ onNavigateToUnits }) {
   const selectedEmployeeObjects = employees.filter(e => selectedIds.includes(e.id));
   const isArchivedView = activeTab === 'archived';
 
+  const availableSections = Array.from(new Set(
+    employees.flatMap(e => [e.section, e.sub_unit].filter(Boolean))
+  )).sort();
+
   // Quick view tab definition (Spec 4)
   const QUICK_TABS = [
     { id: 'all', label: 'All Staff', count: summaryCounts.total },
@@ -520,6 +527,20 @@ export function DirectoryView({ onNavigateToUnits }) {
               </button>
             )}
           </div>
+
+          {/* Section & Sub-unit Filter */}
+          {availableSections.length > 0 && (
+            <select
+              value={selectedSection}
+              onChange={(e) => setSelectedSection(e.target.value)}
+              className="h-8 px-2.5 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-800 dark:text-zinc-200 font-medium text-xs"
+            >
+              <option value="">All Sections & Units</option>
+              {availableSections.map(sec => (
+                <option key={sec} value={sec}>{sec}</option>
+              ))}
+            </select>
+          )}
 
           {/* Group Filter */}
           <select

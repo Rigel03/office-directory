@@ -40,6 +40,7 @@ router.get('/', (req, res) => {
     const {
       search,
       unit,
+      section,
       groupId,
       status,
       tab,
@@ -87,13 +88,23 @@ router.get('/', (req, res) => {
 
     if (search && search.trim()) {
       const term = `%${search.trim()}%`;
-      query += ` AND (e.full_name LIKE ? OR e.position LIKE ? OR e.unit LIKE ? OR e.unit_code LIKE ? OR e.email LIKE ? OR e.location LIKE ? OR e.room LIKE ? OR e.floor LIKE ?)`;
-      params.push(term, term, term, term, term, term, term, term);
+      query += ` AND (
+        e.full_name LIKE ? OR e.position LIKE ? OR e.unit LIKE ? OR e.unit_code LIKE ?
+        OR e.email LIKE ? OR e.location LIKE ? OR e.room LIKE ? OR e.floor LIKE ?
+        OR e.title LIKE ? OR e.section LIKE ? OR e.sub_unit LIKE ? OR e.role LIKE ?
+        OR e.also_assigned_to LIKE ? OR e.review_notes LIKE ?
+      )`;
+      params.push(term, term, term, term, term, term, term, term, term, term, term, term, term, term);
     }
 
     if (unit && unit.trim()) {
       query += ` AND (e.unit = ? OR e.unit_code = ? OR u.short_code = ?)`;
       params.push(unit.trim(), unit.trim(), unit.trim());
+    }
+
+    if (section && section.trim()) {
+      query += ` AND (e.section = ? OR e.sub_unit = ? OR e.also_assigned_to LIKE ?)`;
+      params.push(section.trim(), section.trim(), `%${section.trim()}%`);
     }
 
     if (groupId) {

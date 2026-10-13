@@ -21,6 +21,121 @@ router.get('/', (req, res) => {
   }
 });
 
+// GET /api/units/:code/structure - returns hierarchical sections, units, section heads, and member counts
+router.get('/:code/structure', (req, res) => {
+  try {
+    const rawCode = req.params.code;
+    const unit = db.prepare('SELECT * FROM units WHERE UPPER(short_code) = UPPER(?) OR UPPER(name) = UPPER(?)').get(rawCode, rawCode);
+    if (!unit) return res.status(404).json({ error: 'Division not found' });
+
+    const emps = db.prepare(`
+      SELECT * FROM employees
+      WHERE (unit_id = ? OR UPPER(unit_code) = UPPER(?) OR UPPER(unit) = UPPER(?))
+        AND is_archived = 0
+      ORDER BY full_name ASC
+    `).all(unit.id, unit.short_code, unit.name);
+
+    // Structure calculation per official specifications:
+    // Section rows with no Unit count everyone whose primary Section matches (including people in its units).
+    // Unit rows count primary members plus people who list that unit as a second assignment (Also Assigned To).
+    const structureConfigs = [
+      {
+        section: 'Office of the Division Head',
+        unit: '',
+        defaultHead: 'SANTOS, Gina R.',
+        isUnit: false
+      },
+      {
+        section: 'Transport Planning',
+        unit: '',
+        defaultHead: 'PEREZ IV, Eduardo B.',
+        isUnit: false
+      },
+      {
+        section: 'Transport Planning',
+        unit: 'Development Plans Unit',
+        defaultHead: '',
+        isUnit: true
+      },
+      {
+        section: 'Transport Planning',
+        unit: 'Research and Stats Unit',
+        defaultHead: '',
+        isUnit: true
+      },
+      {
+        section: 'Transport Management',
+        unit: '',
+        defaultHead: 'GUTIERREZ, Tyrone D.',
+        isUnit: false
+      },
+      {
+        section: 'Transport Management',
+        unit: 'Transport Services Unit',
+        defaultHead: '',
+        isUnit: true
+      },
+      {
+        section: 'Transport Management',
+        unit: 'Transport Systems Unit',
+        defaultHead: '',
+        isUnit: true
+      },
+      {
+        section: 'Administrative Services',
+        unit: '',
+        defaultHead: 'ALVIOLA, Princess Guillen A.',
+        isUnit: false
+      }
+    ];
+
+    const sections = structureConfigs.map(cfg => {
+      let matchedMembers = [];
+
+      if (!cfg.isUnit) {
+        // Section: counts everyone whose primary section matches
+        matchedMembers = emps.filter(e => (e.section || '').trim().toLowerCase() === cfg.section.toLowerCase());
+      } else {
+        // Unit: primary sub_unit match OR secondary assignment in Also Assigned To
+        matchedMembers = emps.filter(e => {
+          const inSubUnit = (e.sub_unit || '').trim().toLowerCase() === cfg.unit.toLowerCase();
+          const inSecondary = (e.also_assigned_to || '').toLowerCase().includes(cfg.unit.toLowerCase());
+          return inSubUnit || inSecondary;
+        });
+      }
+
+      // Find head of section
+      const headEmp = emps.find(e =>
+        (e.role === 'Division Head' || e.role === 'Section Head') &&
+        (e.section || '').trim().toLowerCase() === cfg.section.toLowerCase() &&
+        !cfg.isUnit
+      ) || (cfg.defaultHead ? emps.find(e => e.full_name === cfg.defaultHead) : null);
+
+      const headName = headEmp
+        ? (headEmp.title ? `${headEmp.title} ${headEmp.full_name}` : headEmp.full_name)
+        : '';
+
+      return {
+        section: cfg.section,
+        unit: cfg.unit,
+        displayName: cfg.unit ? cfg.unit : cfg.section,
+        head: headName,
+        headRaw: headEmp ? headEmp.full_name : '',
+        membersCount: matchedMembers.length,
+        members: matchedMembers
+      };
+    });
+
+    return res.json({
+      unit,
+      totalCount: emps.length,
+      sections
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to retrieve structure: ' + err.message });
+  }
+});
+
 // GET /api/units/rooms - list of managed rooms
 router.get('/rooms', (req, res) => {
   try {

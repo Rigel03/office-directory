@@ -6,6 +6,7 @@ import {
 export const ALL_COLUMNS = [
   { id: 'full_name', label: 'Employee', fixed: true, visible: true },
   { id: 'position', label: 'Position', fixed: false, visible: true },
+  { id: 'section', label: 'Section / Unit', fixed: false, visible: true },
   { id: 'unit', label: 'Unit / Division', fixed: false, visible: true },
   { id: 'status', label: 'Status', fixed: false, visible: true },
   { id: 'contact', label: 'Contact (Email/Ext)', fixed: false, visible: true },

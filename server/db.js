@@ -124,6 +124,19 @@ function initSchema() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  // Ensure structured columns exist
+  const safeCols = [
+    `ALTER TABLE employees ADD COLUMN title TEXT DEFAULT ''`,
+    `ALTER TABLE employees ADD COLUMN section TEXT DEFAULT ''`,
+    `ALTER TABLE employees ADD COLUMN sub_unit TEXT DEFAULT ''`,
+    `ALTER TABLE employees ADD COLUMN role TEXT DEFAULT 'Staff'`,
+    `ALTER TABLE employees ADD COLUMN also_assigned_to TEXT DEFAULT ''`,
+    `ALTER TABLE employees ADD COLUMN review_notes TEXT DEFAULT ''`
+  ];
+  for (const q of safeCols) {
+    try { db.exec(q); } catch (e) {}
+  }
 }
 
 function calculateQuarter(dateStr) {
@@ -217,231 +230,11 @@ function seedData() {
     }
   }
 
-  // Seed Employees
+  // Seed Employees using official TPMD roster
   const employeeCount = db.prepare('SELECT COUNT(*) as count FROM employees').get().count;
   if (employeeCount === 0) {
-    const insertEmp = db.prepare(`
-      INSERT INTO employees (
-        full_name, position, unit_id, unit, unit_code, floor, room, location,
-        email, phone, status, needs_review, is_archived, last_verified_at, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-    `);
-
-    // Lookup unit helper
-    const getUnitInfo = (code) => {
-      if (!code) return { id: null, name: '', short_code: '' };
-      const row = db.prepare('SELECT id, name, short_code FROM units WHERE short_code = ?').get(code);
-      return row || { id: null, name: '', short_code: '' };
-    };
-
-    const rawEmployees = [
-      {
-        name: 'SANTOS, Maria C.',
-        position: 'Senior Transport Planning Officer',
-        unitCode: 'TPMD',
-        floor: '4th Floor',
-        room: 'TPMD Urban Transport Bay',
-        email: 'm.santos@office.gov',
-        phone: 'Ext. 401',
-        status: 'active',
-        verified: '2026-09-15',
-        notes: 'Lead focal for public transport route rationalization'
-      },
-      {
-        name: 'DELA CRUZ, Juan P.',
-        position: 'Administrative Assistant',
-        unitCode: 'ASD',
-        floor: '2nd Floor',
-        room: 'ASD Administrative Suite',
-        email: 'j.delacruz@office.gov',
-        phone: 'Ext. 102',
-        status: 'active',
-        verified: '2026-08-20',
-        notes: 'Division document tracking and communications officer'
-      },
-      {
-        name: 'REYES, Antonio B.',
-        position: 'Traffic Systems Analyst',
-        unitCode: 'TEID',
-        floor: '3rd Floor',
-        room: 'Command & Traffic Control Center 301',
-        email: 'a.reyes@office.gov',
-        phone: 'Ext. 550',
-        status: 'active',
-        verified: '2026-09-30',
-        notes: 'Traffic signals optimization & CCTV telemetry lead'
-      },
-      {
-        name: 'GARCIA, Elena M.',
-        position: 'Franchising Regulatory Officer II',
-        unitCode: 'MVFRD',
-        floor: 'Ground Floor',
-        room: 'MVFRD Licensing Bay 1',
-        email: 'e.garcia@office.gov',
-        phone: 'Ext. 204',
-        status: 'active',
-        verified: '2026-07-10',
-        notes: 'Tricycle franchise renewals evaluator'
-      },
-      {
-        // Missing position -> needs_review = 1
-        name: 'BAUTISTA, Carlos R.',
-        position: '',
-        unitCode: 'ASD',
-        floor: '2nd Floor',
-        room: 'Finance & Budget Office 204',
-        email: 'c.bautista@office.gov',
-        phone: 'Ext. 310',
-        status: 'active',
-        verified: null,
-        notes: 'Transferred from Treasury; position title awaiting civil service confirmation'
-      },
-      {
-        // Missing unit -> needs_review = 1
-        name: 'AQUINO, Patricia D.',
-        position: 'Project Evaluation Officer',
-        unitCode: '',
-        floor: '4th Floor',
-        room: 'Executive Conference Hall A',
-        email: 'p.aquino@office.gov',
-        phone: 'Ext. 415',
-        status: 'active',
-        verified: null,
-        notes: 'Division reassignment pending executive order'
-      },
-      {
-        name: 'MENDOZA, Roberto S.',
-        position: 'Division Chief / Officer-in-Charge',
-        unitCode: 'ASD',
-        floor: '2nd Floor',
-        room: 'ASD Administrative Suite',
-        email: 'r.mendoza@office.gov',
-        phone: 'Ext. 100',
-        status: 'active',
-        verified: '2026-10-01',
-        notes: 'Administrative and Support Division Chief'
-      },
-      {
-        // Status on leave
-        name: 'OCAMPO, Teresa V.',
-        position: 'Senior Accountant',
-        unitCode: 'ASD',
-        floor: '2nd Floor',
-        room: 'Finance & Budget Office 204',
-        email: 't.ocampo@office.gov',
-        phone: 'Ext. 312',
-        status: 'on leave',
-        verified: '2026-06-18',
-        notes: 'Maternity leave through Nov 2026'
-      },
-      {
-        // Location mismatch for soft warning demo: TEID default floor is 3rd Floor, but stationed at 4th Floor!
-        name: 'VILLANUEVA, Gabriel L.',
-        position: 'Traffic Signal Specialist',
-        unitCode: 'TEID',
-        floor: '4th Floor',
-        room: 'TPMD Urban Transport Bay',
-        email: 'g.villanueva@office.gov',
-        phone: 'Ext. 552',
-        status: 'active',
-        verified: '2026-09-12',
-        notes: 'Cross-assigned to 4th floor inter-agency task team'
-      },
-      {
-        // Missing both position and unit -> needs_review = 1
-        name: 'RAMOS, Sofia N.',
-        position: '',
-        unitCode: '',
-        floor: 'Ground Floor',
-        room: 'Front Reception Desk',
-        email: 's.ramos@office.gov',
-        phone: 'Ext. 210',
-        status: 'active',
-        verified: null,
-        notes: 'Newly onboarded personnel, details incomplete'
-      },
-      {
-        // Status detached
-        name: 'CRUZ, Dennis F.',
-        position: 'Traffic Enforcement Supervisor',
-        unitCode: 'TESMD',
-        floor: 'Ground Floor',
-        room: 'TESMD Dispatch Station',
-        email: 'd.cruz@office.gov',
-        phone: 'Ext. 120',
-        status: 'detached',
-        verified: '2026-05-04',
-        notes: 'Detached to regional inter-agency traffic task group'
-      },
-      {
-        name: 'FERNANDEZ, Clara T.',
-        position: 'Human Resource Management Officer I',
-        unitCode: 'ASD',
-        floor: '2nd Floor',
-        room: 'ASD Human Resource Bay',
-        email: 'c.fernandez@office.gov',
-        phone: 'Ext. 105',
-        status: 'active',
-        verified: '2026-09-22',
-        notes: 'Personnel records, training coordinator'
-      }
-    ];
-
-
-    for (const emp of rawEmployees) {
-      const u = getUnitInfo(emp.unitCode);
-      const loc = formatLocation(emp.floor, emp.room);
-      const needsRev = (!emp.position || !u.name) ? 1 : 0;
-      insertEmp.run(
-        emp.name,
-        emp.position,
-        u.id,
-        u.name,
-        u.short_code,
-        emp.floor,
-        emp.room,
-        loc,
-        emp.email,
-        emp.phone,
-        emp.status,
-        needsRev,
-        emp.verified,
-        emp.notes
-      );
-    }
-
-    // Groups
-    const insertGroup = db.prepare('INSERT INTO groups (name, type, description) VALUES (?, ?, ?)');
-    const g1 = insertGroup.run('Batch 2026 Q1 Induction', 'training batch', 'New hires and mandatory civil service orientation').lastInsertRowid;
-    const g2 = insertGroup.run('Digital Transformation Committee', 'committee', 'Oversees paperless directory migration and digital workflows').lastInsertRowid;
-    const g3 = insertGroup.run('Emergency Response Team', 'team', 'Floor marshals and first-aid response team').lastInsertRowid;
-    const g4 = insertGroup.run('Quarterly ISO Audit Taskforce', 'other', 'Internal audit team for Q3/Q4 ISO review').lastInsertRowid;
-
-    // Member links
-    const insertMember = db.prepare('INSERT INTO employee_groups (employee_id, group_id) VALUES (?, ?)');
-    insertMember.run(1, g2); // Maria Santos in IT committee
-    insertMember.run(1, g4); // Maria Santos in ISO taskforce (multi-group)
-    insertMember.run(2, g1); // Juan Dela Cruz in Batch
-    insertMember.run(3, g2); // Antonio Reyes in IT committee
-    insertMember.run(9, g2); // Gabriel Villanueva in IT committee
-    insertMember.run(9, g3); // Gabriel in Emergency Team (multi-group)
-    insertMember.run(12, g1); // Clara Fernandez in Induction
-
-    // Training records
-    const insertTrain = db.prepare(`
-      INSERT INTO training_records (employee_id, title, date, hours, provider, quarter)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    insertTrain.run(1, 'ISO 9001:2015 Lead Auditor Course', '2026-01-15', 16, 'Quality Excellence Institute', 'Q1 2026');
-    insertTrain.run(1, 'Public Service Ethics and Accountability', '2026-04-10', 8, 'Civil Service Academy', 'Q2 2026');
-    insertTrain.run(2, 'Records Management System Training', '2026-02-20', 8, 'National Archives', 'Q1 2026');
-    insertTrain.run(3, 'Cybersecurity Incident Response Workshop', '2026-03-05', 24, 'Cyber Defense Center', 'Q1 2026');
-    insertTrain.run(3, 'Advanced Linux System Administration', '2026-07-12', 40, 'OpenTech Academy', 'Q3 2026');
-    insertTrain.run(4, 'Digital Archiving and Preservation', '2026-02-18', 12, 'National Archives', 'Q1 2026');
-    insertTrain.run(7, 'Executive Leadership and Strategic Planning', '2026-05-18', 16, 'Graduate School of Governance', 'Q2 2026');
-    insertTrain.run(9, 'Network Security Essentials', '2026-03-05', 24, 'Cyber Defense Center', 'Q1 2026');
-    insertTrain.run(12, 'Competency-Based Interviewing Techniques', '2026-08-14', 16, 'Civil Service Academy', 'Q3 2026');
+    const { seedTpmdData } = require('./seedTpmd');
+    seedTpmdData();
   }
 }
 

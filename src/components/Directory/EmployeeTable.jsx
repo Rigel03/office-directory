@@ -125,9 +125,34 @@ export function EmployeeTable({
         return (
           <td key={colId} className={`${cellPadding} min-w-[240px]`}>
             <div className="flex flex-col">
-              <span className={`font-semibold text-slate-900 dark:text-slate-100 ${isCompact ? 'text-xs' : 'text-sm'}`}>
-                {emp.full_name}
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {emp.title && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 shrink-0">
+                    {emp.title}
+                  </span>
+                )}
+                <span className={`font-semibold text-zinc-950 dark:text-white ${isCompact ? 'text-xs' : 'text-sm'}`}>
+                  {emp.full_name}
+                </span>
+                {emp.role === 'Division Head' && (
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shrink-0">
+                    Division Head
+                  </span>
+                )}
+                {emp.role === 'Section Head' && (
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold border border-zinc-900 dark:border-zinc-200 text-zinc-900 dark:text-zinc-100 shrink-0">
+                    Section Head
+                  </span>
+                )}
+                {emp.needs_review ? (
+                  <span
+                    title={emp.review_notes || 'Incomplete record or second assignment - needs review'}
+                    className="inline-flex items-center text-zinc-600 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white cursor-help shrink-0"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
+                  </span>
+                ) : null}
+              </div>
 
               {/* Structured Quick-find Location & Groups underneath (Spec 6) */}
               <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
@@ -136,7 +161,7 @@ export function EmployeeTable({
                     title="Physical Office Location"
                     className="inline-flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300"
                   >
-                    <MapPin className="w-3 h-3 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
+                    <MapPin className="w-3 h-3 text-zinc-500 dark:text-zinc-400 flex-shrink-0" />
                     {emp.location}
                   </span>
                 ) : (
@@ -163,6 +188,27 @@ export function EmployeeTable({
                   </div>
                 )}
               </div>
+            </div>
+          </td>
+        );
+
+      case 'section':
+        return (
+          <td key={colId} className={`${cellPadding} min-w-[200px]`}>
+            <div className="flex flex-col gap-0.5">
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                {emp.section || '—'}
+              </span>
+              {emp.sub_unit && (
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
+                  {emp.sub_unit}
+                </span>
+              )}
+              {emp.also_assigned_to && (
+                <span title={`Cross-assignment: ${emp.also_assigned_to}`} className="text-[10px] text-zinc-500 dark:text-zinc-400 italic">
+                  Also: {emp.also_assigned_to}
+                </span>
+              )}
             </div>
           </td>
         );

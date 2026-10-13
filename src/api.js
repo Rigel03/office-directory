@@ -77,6 +77,7 @@ export const api = {
   getEmployeesSummary: () => request('/employees/summary'),
   getUnits: () => request('/units'),
   getUnitsSummary: () => request('/employees/units/summary'),
+  getUnitStructure: (code) => request(`/units/${encodeURIComponent(code)}/structure`),
   renameUnit: (oldUnit, newUnit) => request('/employees/units/rename', { method: 'PUT', body: JSON.stringify({ oldUnit, newUnit }) }),
   createUnit: (data) => request('/units', { method: 'POST', body: JSON.stringify(data) }),
   updateUnit: (id, data) => request(`/units/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

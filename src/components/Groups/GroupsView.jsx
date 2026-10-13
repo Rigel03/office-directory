@@ -22,6 +22,8 @@ export function GroupsView() {
   // UNITS STATE
   const [unitSummaries, setUnitSummaries] = useState([]);
   const [selectedUnit, setSelectedUnit] = useState(null);
+  const [unitStructure, setUnitStructure] = useState(null);
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState('ALL'); // 'ALL' | section or sub_unit name
   const [unitMembers, setUnitMembers] = useState([]);
   const [loadingUnits, setLoadingUnits] = useState(false);
   const [editingUnitName, setEditingUnitName] = useState(null); // { oldUnit: '', newUnit: '' }
@@ -98,10 +100,24 @@ export function GroupsView() {
       const emps = await api.getEmployees({ unit: unitName });
       setUnitMembers(emps);
       setSelectedUnitMemberIds([]);
+
+      // Fetch structure if available
+      const matchingSummary = unitSummaries.find(u => u.unit === unitName);
+      const code = matchingSummary?.short_code || (unitName.includes('TPMD') ? 'TPMD' : unitName);
+      try {
+        const structure = await api.getUnitStructure(code);
+        setUnitStructure(structure);
+      } catch (e) {
+        setUnitStructure(null);
+      }
     } catch (err) {
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    setSelectedSectionFilter('ALL');
+  }, [selectedUnit]);
 
   useEffect(() => {
     loadGroups();
@@ -590,6 +606,96 @@ export function GroupsView() {
                     )}
                   </div>
 
+                  {/* Division Structure Breakdown (if defined) */}
+                  {unitStructure && unitStructure.length > 0 && (
+                    <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100/50 dark:bg-zinc-800/40 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5" />
+                          Organizational Structure & Sections
+                        </span>
+                        {selectedSectionFilter !== 'ALL' && (
+                          <button
+                            onClick={() => setSelectedSectionFilter('ALL')}
+                            className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white underline cursor-pointer"
+                          >
+                            Show All ({unitMembers.length})
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+                        <div
+                          onClick={() => setSelectedSectionFilter('ALL')}
+                          className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
+                            selectedSectionFilter === 'ALL'
+                              ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 border-zinc-900 dark:border-white shadow-2xs'
+                              : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 text-zinc-800 dark:text-zinc-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-xs">All Division Staff</span>
+                            <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${
+                              selectedSectionFilter === 'ALL'
+                                ? 'bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900'
+                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                            }`}>
+                              {unitMembers.length}
+                            </span>
+                          </div>
+                          <p className={`text-[10px] mt-1 ${selectedSectionFilter === 'ALL' ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                            Entire division roster
+                          </p>
+                        </div>
+
+                        {unitStructure.map((st, idx) => {
+                          const filterKey = st.unit ? `${st.section}:::${st.unit}` : st.section;
+                          const isCurrentActive = selectedSectionFilter === filterKey;
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => setSelectedSectionFilter(filterKey)}
+                              className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
+                                isCurrentActive
+                                  ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 border-zinc-900 dark:border-white shadow-2xs'
+                                  : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 text-zinc-800 dark:text-zinc-200'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-1.5">
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-semibold text-xs leading-snug line-clamp-1">
+                                    {st.unit ? `↳ ${st.unit}` : st.section}
+                                  </div>
+                                  {!st.unit && st.head && (
+                                    <div className={`text-[10px] truncate mt-0.5 ${
+                                      isCurrentActive ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-500 dark:text-zinc-400'
+                                    }`}>
+                                      Head: {st.head}
+                                    </div>
+                                  )}
+                                  {st.unit && (
+                                    <div className={`text-[10px] truncate mt-0.5 ${
+                                      isCurrentActive ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-500 dark:text-zinc-400'
+                                    }`}>
+                                      Under {st.section}
+                                    </div>
+                                  )}
+                                </div>
+                                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                  isCurrentActive
+                                    ? 'bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900'
+                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                                }`}>
+                                  {st.count}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Multi-select staff in unit bar */}
                   {selectedUnitMemberIds.length > 0 && isAdmin && (
                     <div className="bg-zinc-900 text-white px-6 py-2.5 flex items-center justify-between text-xs animate-in fade-in">
@@ -613,40 +719,95 @@ export function GroupsView() {
                       <thead>
                         <tr className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                           {isAdmin && <th className="py-2.5 px-4 w-10"></th>}
-                          <th className="py-2.5 px-4 min-w-[170px]">Staff Name</th>
-                          <th className="py-2.5 px-4 min-w-[190px]">Position</th>
-                          <th className="py-2.5 px-4 min-w-[170px]">Desk Location</th>
+                          <th className="py-2.5 px-4 min-w-[200px]">Staff Name</th>
+                          <th className="py-2.5 px-4 min-w-[190px]">Position & Role</th>
+                          <th className="py-2.5 px-4 min-w-[180px]">Section / Assignment</th>
+                          <th className="py-2.5 px-4 min-w-[140px]">Desk Location</th>
                           <th className="py-2.5 px-4 w-24 whitespace-nowrap">Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        {unitMembers.map(emp => {
-                          const isChecked = selectedUnitMemberIds.includes(emp.id);
-                          return (
-                            <tr key={emp.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
-                              {isAdmin && (
-                                <td className="py-2.5 px-4">
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    onChange={() => {
-                                      setSelectedUnitMemberIds(prev =>
-                                        prev.includes(emp.id)
-                                          ? prev.filter(x => x !== emp.id)
-                                          : [...prev, emp.id]
-                                      );
-                                    }}
-                                    className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500 cursor-pointer dark:bg-zinc-800"
-                                  />
+                        {unitMembers
+                          .filter(emp => {
+                            if (selectedSectionFilter === 'ALL') return true;
+                            if (selectedSectionFilter.includes(':::')) {
+                              const [sec, sub] = selectedSectionFilter.split(':::');
+                              const matchesPrimary = (emp.section === sec && emp.sub_unit === sub);
+                              const matchesSecondary = emp.also_assigned_to && (
+                                emp.also_assigned_to.includes(sub) ||
+                                (emp.also_assigned_to.includes(sec) && emp.also_assigned_to.includes(sub))
+                              );
+                              return matchesPrimary || matchesSecondary;
+                            }
+                            // Matching whole section
+                            return emp.section === selectedSectionFilter;
+                          })
+                          .map(emp => {
+                            const isChecked = selectedUnitMemberIds.includes(emp.id);
+                            return (
+                              <tr key={emp.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
+                                {isAdmin && (
+                                  <td className="py-2.5 px-4">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => {
+                                        setSelectedUnitMemberIds(prev =>
+                                          prev.includes(emp.id)
+                                            ? prev.filter(x => x !== emp.id)
+                                            : [...prev, emp.id]
+                                        );
+                                      }}
+                                      className="rounded border-zinc-300 dark:border-zinc-600 text-zinc-900 focus:ring-zinc-500 cursor-pointer dark:bg-zinc-800"
+                                    />
+                                  </td>
+                                )}
+                                <td className="py-2.5 px-4 font-semibold text-zinc-950 dark:text-white whitespace-nowrap">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {emp.title && (
+                                      <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-[11px]">
+                                        {emp.title}
+                                      </span>
+                                    )}
+                                    <span>{emp.full_name}</span>
+                                    {emp.role && (
+                                      <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded border ${
+                                        emp.role === 'Division Head'
+                                          ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 border-zinc-900 dark:border-white'
+                                          : emp.role === 'Section Head'
+                                          ? 'bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-600'
+                                          : 'bg-zinc-50 text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
+                                      }`}>
+                                        {emp.role}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
-                              )}
-                              <td className="py-2.5 px-4 font-semibold text-zinc-950 dark:text-white whitespace-nowrap">{emp.full_name}</td>
-                              <td className="py-2.5 px-4 text-zinc-700 dark:text-zinc-300">{emp.position || '(Missing Position)'}</td>
-                              <td className="py-2.5 px-4 text-zinc-500 dark:text-zinc-400">{emp.location || '—'}</td>
-                              <td className="py-2.5 px-4 capitalize text-zinc-600 dark:text-zinc-400 whitespace-nowrap">{emp.status}</td>
-                            </tr>
-                          );
-                        })}
+                                <td className="py-2.5 px-4 text-zinc-700 dark:text-zinc-300">
+                                  <div>{emp.position || '(Missing Position)'}</div>
+                                </td>
+                                <td className="py-2.5 px-4 text-zinc-600 dark:text-zinc-300">
+                                  <div className="space-y-0.5">
+                                    <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                                      {emp.section || '—'}
+                                      {emp.sub_unit && (
+                                        <span className="text-zinc-500 dark:text-zinc-400 font-normal">
+                                          {' · '}{emp.sub_unit}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {emp.also_assigned_to && (
+                                      <div className="text-[10px] text-zinc-500 dark:text-zinc-400 italic">
+                                        Also: {emp.also_assigned_to}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-4 text-zinc-500 dark:text-zinc-400">{emp.location || '—'}</td>
+                                <td className="py-2.5 px-4 capitalize text-zinc-600 dark:text-zinc-400 whitespace-nowrap">{emp.status}</td>
+                              </tr>
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>
