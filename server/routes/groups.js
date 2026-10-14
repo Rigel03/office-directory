@@ -8,56 +8,119 @@ router.use(authMiddleware);
 // GET /api/groups
 router.get('/', (req, res) => {
   try {
-    const { type } = req.query;
+    const { type, scope, search } = req.query;
     let query = `
-      SELECT g.*, COUNT(eg.employee_id) as member_count
+      SELECT g.*,
+        o.name as scope_division_name,
+        o.short_code as scope_division_short_code,
+        COUNT(eg.employee_id) as member_count
       FROM groups g
+      LEFT JOIN org_units o ON g.scope_division_id = o.id
       LEFT JOIN employee_groups eg ON g.id = eg.group_id
+      WHERE g.active = 1
     `;
     const params = [];
-    if (type) {
-      query += ` WHERE g.type = ?`;
+    if (type && type !== 'all') {
+      query += ` AND g.type = ?`;
       params.push(type);
     }
+    if (scope && scope !== 'all') {
+      query += ` AND g.scope = ?`;
+      params.push(scope);
+    }
+    if (search && search.trim()) {
+      query += ` AND (g.name LIKE ? OR g.description LIKE ?)`;
+      params.push(`%${search.trim()}%`, `%${search.trim()}%`);
+    }
+
     query += ` GROUP BY g.id ORDER BY g.name ASC`;
     const rows = db.prepare(query).all(...params);
     return res.json(rows);
   } catch (err) {
-    return res.status(500).json({ error: 'Failed to retrieve groups.' });
+    return res.status(500).json({ error: 'Failed to retrieve groups: ' + err.message });
   }
 });
 
-// GET /api/groups/:id (with member details)
+// GET /api/groups/:id (with member details, division, and section info)
 router.get('/:id', (req, res) => {
   try {
-    const group = db.prepare('SELECT * FROM groups WHERE id = ?').get(req.params.id);
+    const group = db.prepare(`
+      SELECT g.*,
+        o.name as scope_division_name,
+        o.short_code as scope_division_short_code
+      FROM groups g
+      LEFT JOIN org_units o ON g.scope_division_id = o.id
+      WHERE g.id = ?
+    `).get(req.params.id);
+
     if (!group) return res.status(404).json({ error: 'Group not found.' });
 
     const members = db.prepare(`
-      SELECT e.id, e.full_name, e.position, e.unit, e.status, e.email, e.location
+      SELECT
+        e.id,
+        e.full_name,
+        e.title,
+        e.position,
+        e.email,
+        e.phone,
+        e.location,
+        e.status,
+        e.unit,
+        e.unit_code,
+        e.section,
+        e.sub_unit,
+        o_div.name as division_name,
+        o_div.short_code as division_short_code,
+        o_sec.name as section_name,
+        o_sec.short_code as section_short_code
       FROM employees e
       JOIN employee_groups eg ON e.id = eg.employee_id
-      WHERE eg.group_id = ?
+      LEFT JOIN assignments a_prim ON (e.id = a_prim.employee_id AND a_prim.is_primary = 1)
+      LEFT JOIN org_units o_prim ON a_prim.org_unit_id = o_prim.id
+      LEFT JOIN org_units o_sec ON (
+        CASE
+          WHEN o_prim.type = 'section' THEN o_prim.id
+          WHEN o_prim.type = 'unit' THEN o_prim.parent_id
+          ELSE NULL
+        END = o_sec.id
+      )
+      LEFT JOIN org_units o_div ON (
+        CASE
+          WHEN o_prim.type = 'division' THEN o_prim.id
+          WHEN o_prim.type = 'section' THEN o_prim.parent_id
+          WHEN o_prim.type = 'unit' THEN (SELECT parent_id FROM org_units WHERE id = o_prim.parent_id)
+          ELSE NULL
+        END = o_div.id
+      )
+      WHERE eg.group_id = ? AND e.is_archived = 0
       ORDER BY e.full_name ASC
     `).all(req.params.id);
 
     return res.json({ ...group, members });
   } catch (err) {
-    return res.status(500).json({ error: 'Failed to fetch group details.' });
+    return res.status(500).json({ error: 'Failed to fetch group details: ' + err.message });
   }
 });
 
-// POST /api/groups
+// POST /api/groups (Admin only)
 router.post('/', requireRole('admin'), (req, res) => {
   try {
-    const { name, type, description = '', memberIds = [] } = req.body;
+    const { name, type, description = '', scope = 'office-wide', scope_division_id = null, memberIds = [] } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Group name is required.' });
     if (!['training batch', 'team', 'committee', 'other'].includes(type)) {
       return res.status(400).json({ error: 'Invalid group type.' });
     }
+    if (!['office-wide', 'division'].includes(scope)) {
+      return res.status(400).json({ error: 'Invalid group scope.' });
+    }
 
-    const insert = db.prepare('INSERT INTO groups (name, type, description) VALUES (?, ?, ?)');
-    const result = insert.run(name.trim(), type, description.trim());
+    const divisionId = scope === 'division' ? (scope_division_id || null) : null;
+
+    const insert = db.prepare(`
+      INSERT INTO groups (name, type, description, scope, scope_division_id, active)
+      VALUES (?, ?, ?, ?, ?, 1)
+    `);
+    const result = insert.run(name.trim(), type, description.trim(), scope, divisionId);
     const newId = result.lastInsertRowid;
 
     if (Array.isArray(memberIds) && memberIds.length > 0) {
@@ -67,39 +130,59 @@ router.post('/', requireRole('admin'), (req, res) => {
       }
     }
 
+    logAudit(null, 'CREATE_GROUP', [{ group_id: newId, name, type, scope }], req.user);
+
     const created = db.prepare('SELECT * FROM groups WHERE id = ?').get(newId);
     return res.status(201).json(created);
   } catch (err) {
     if (err.message && err.message.includes('UNIQUE')) {
       return res.status(400).json({ error: 'A group with this name already exists.' });
     }
-    return res.status(500).json({ error: 'Failed to create group.' });
+    return res.status(500).json({ error: 'Failed to create group: ' + err.message });
   }
 });
 
-// PUT /api/groups/:id
+// PUT /api/groups/:id (Admin only)
 router.put('/:id', requireRole('admin'), (req, res) => {
   try {
-    const { name, type, description = '' } = req.body;
+    const id = req.params.id;
+    const existing = db.prepare('SELECT * FROM groups WHERE id = ?').get(id);
+    if (!existing) return res.status(404).json({ error: 'Group not found.' });
+
+    const { name, type, description = '', scope = 'office-wide', scope_division_id = null } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Group name is required.' });
 
-    const update = db.prepare('UPDATE groups SET name = ?, type = ?, description = ? WHERE id = ?');
-    update.run(name.trim(), type, description.trim(), req.params.id);
+    const divisionId = scope === 'division' ? (scope_division_id || null) : null;
 
-    const updated = db.prepare('SELECT * FROM groups WHERE id = ?').get(req.params.id);
+    const update = db.prepare(`
+      UPDATE groups
+      SET name = ?, type = ?, description = ?, scope = ?, scope_division_id = ?
+      WHERE id = ?
+    `);
+    update.run(name.trim(), type, description.trim(), scope, divisionId, id);
+
+    logAudit(null, 'UPDATE_GROUP', [{ group_id: id, name, type, scope }], req.user);
+
+    const updated = db.prepare('SELECT * FROM groups WHERE id = ?').get(id);
     return res.json(updated);
   } catch (err) {
-    return res.status(500).json({ error: 'Failed to update group.' });
+    return res.status(500).json({ error: 'Failed to update group: ' + err.message });
   }
 });
 
-// DELETE /api/groups/:id
+// DELETE /api/groups/:id (Admin only)
 router.delete('/:id', requireRole('admin'), (req, res) => {
   try {
+    const group = db.prepare('SELECT * FROM groups WHERE id = ?').get(req.params.id);
+    if (!group) return res.status(404).json({ error: 'Group not found.' });
+
+    db.prepare('DELETE FROM employee_groups WHERE group_id = ?').run(req.params.id);
     db.prepare('DELETE FROM groups WHERE id = ?').run(req.params.id);
+
+    logAudit(null, 'DELETE_GROUP', [{ group_id: req.params.id, name: group.name }], req.user);
     return res.json({ success: true, message: 'Group deleted.' });
   } catch (err) {
-    return res.status(500).json({ error: 'Failed to delete group.' });
+    return res.status(500).json({ error: 'Failed to delete group: ' + err.message });
   }
 });
 

@@ -324,15 +324,25 @@ export function EmployeeTable({
                     <span>Set Unit</span>
                   </button>
                 ) : (
-                  <div className="flex items-center gap-1">
-                    {/* Show short code in table with full name on hover (Spec 3) */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Show primary short code with full name on hover (Spec 3 & Spec 5) */}
                     <span
-                      title={emp.unit}
+                      title={emp.primary_assignment ? `${emp.primary_assignment.org_unit_name} (${emp.primary_assignment.division_name || emp.unit})` : emp.unit}
                       onDoubleClick={() => handleStartInline(emp, 'unit')}
                       className="px-2 py-0.5 rounded text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 cursor-help"
                     >
-                      {emp.unit_code || emp.unit}
+                      {emp.primary_assignment?.org_unit_short_code || emp.unit_code || emp.unit}
                     </span>
+
+                    {/* Show "+1" when employee has secondary assignment(s) (Spec 5) */}
+                    {emp.secondary_assignments && emp.secondary_assignments.length > 0 && (
+                      <span
+                        title={`Secondary Assignment: ${emp.secondary_assignments.map(s => `${s.org_unit_name} (${s.org_unit_short_code})`).join(', ')}`}
+                        className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-600 cursor-help whitespace-nowrap"
+                      >
+                        +{emp.secondary_assignments.length}
+                      </span>
+                    )}
 
                     {/* Soft Location Mismatch Warning Icon (Spec 3) */}
                     {emp.location_mismatch && (

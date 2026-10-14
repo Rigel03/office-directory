@@ -32,7 +32,8 @@ export function Navbar({ activeTab, onSelectTab }) {
           <nav className="hidden md:flex items-center gap-1">
             {[
               { id: 'directory', label: 'Directory', icon: Users },
-              { id: 'groups', label: 'Divisions & Groups', icon: Layers },
+              { id: 'organization', label: 'Organization', icon: Building2 },
+              { id: 'groups', label: 'Groups', icon: Layers },
               { id: 'training', label: 'Training & Reports', icon: Award },
               { id: 'audit', label: 'Audit Trail', icon: History }
             ].map((tab) => {
@@ -117,10 +118,11 @@ export function Navbar({ activeTab, onSelectTab }) {
         </div>
 
         {/* Mobile Navigation Tabs */}
-        <div className="md:hidden flex items-center justify-around py-2 border-t border-zinc-100 dark:border-zinc-800">
+        <div className="md:hidden flex items-center justify-between overflow-x-auto py-2 border-t border-zinc-100 dark:border-zinc-800 gap-1">
           {[
             { id: 'directory', label: 'Directory', icon: Users },
-            { id: 'groups', label: 'Divisions & Groups', icon: Layers },
+            { id: 'organization', label: 'Org', icon: Building2 },
+            { id: 'groups', label: 'Groups', icon: Layers },
             { id: 'training', label: 'Training', icon: Award },
             { id: 'audit', label: 'Audit', icon: History }
           ].map((tab) => {
@@ -130,13 +132,13 @@ export function Navbar({ activeTab, onSelectTab }) {
               <button
                 key={tab.id}
                 onClick={() => onSelectTab(tab.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg ${
+                className={`flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-lg shrink-0 ${
                   isActive 
                     ? 'text-white bg-zinc-900 dark:text-zinc-900 dark:bg-white' 
                     : 'text-zinc-500 dark:text-zinc-400'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
                 <span>{tab.label}</span>
               </button>
             );

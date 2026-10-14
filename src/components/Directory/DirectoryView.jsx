@@ -63,8 +63,10 @@ export function DirectoryView({ onNavigateToUnits }) {
 
   // Search & Filter State
   const [search, setSearch] = useState('');
-  const [selectedUnit, setSelectedUnit] = useState('');
-  const [selectedSection, setSelectedSection] = useState('');
+  const [orgTree, setOrgTree] = useState([]);
+  const [selectedDivisionId, setSelectedDivisionId] = useState('');
+  const [selectedSectionId, setSelectedSectionId] = useState('');
+  const [selectedUnitId, setSelectedUnitId] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [sortBy, setSortBy] = useState('full_name');
@@ -101,8 +103,9 @@ export function DirectoryView({ onNavigateToUnits }) {
       setLoading(true);
       const params = {
         search,
-        unit: selectedUnit,
-        section: selectedSection,
+        divisionId: selectedDivisionId,
+        sectionId: selectedSectionId,
+        unitId: selectedUnitId,
         groupId: selectedGroupId,
         sortBy,
         sortOrder
@@ -123,16 +126,16 @@ export function DirectoryView({ onNavigateToUnits }) {
         params.status = selectedStatus;
       }
 
-      const [empList, unitList, roomList, groupList] = await Promise.all([
+      const [empList, tree, roomList, groupList] = await Promise.all([
         api.getEmployees(params),
-        api.getUnits(),
+        api.getOrgTree(),
         api.getRooms(),
         api.getGroups(),
         loadSummaryCounts()
       ]);
 
       setEmployees(empList);
-      setUnits(unitList);
+      setOrgTree(tree);
       setRooms(roomList);
       setGroups(groupList);
     } catch (err) {
@@ -146,7 +149,7 @@ export function DirectoryView({ onNavigateToUnits }) {
     loadData();
     setSelectedIds([]);
     setAllFilteredSelected(false);
-  }, [activeTab, search, selectedUnit, selectedSection, selectedGroupId, selectedStatus, sortBy, sortOrder]);
+  }, [activeTab, search, selectedDivisionId, selectedSectionId, selectedUnitId, selectedGroupId, selectedStatus, sortBy, sortOrder]);
 
   const handleSort = (column) => {
     if (sortBy === column) {
@@ -184,8 +187,9 @@ export function DirectoryView({ onNavigateToUnits }) {
 
   const handleClearFilters = () => {
     setSearch('');
-    setSelectedUnit('');
-    setSelectedSection('');
+    setSelectedDivisionId('');
+    setSelectedSectionId('');
+    setSelectedUnitId('');
     setSelectedGroupId('');
     setSelectedStatus('');
     setActiveTab('all');
@@ -502,47 +506,61 @@ export function DirectoryView({ onNavigateToUnits }) {
             <span>Filters:</span>
           </div>
 
-          {/* Managed Units / Divisions Dropdown (Spec 3) */}
+          {/* Cascading Org Structure Filters (Spec 5: Division → Section → Unit) */}
+          {/* 1. Division Filter */}
           <div className="flex items-center gap-1">
             <select
-              value={selectedUnit}
-              onChange={(e) => setSelectedUnit(e.target.value)}
+              value={selectedDivisionId}
+              onChange={(e) => {
+                setSelectedDivisionId(e.target.value);
+                setSelectedSectionId('');
+                setSelectedUnitId('');
+              }}
               className="h-8 px-2.5 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-800 dark:text-zinc-200 font-medium text-xs"
             >
-              <option value="">All Units / Divisions</option>
-              {units.map(u => (
-                <option key={u.id || u.name} value={u.name}>
-                  [{u.short_code}] {u.name}
+              <option value="">All Divisions</option>
+              {orgTree.filter(o => o.type === 'division').map(d => (
+                <option key={d.id} value={d.id}>
+                  [{d.short_code}] {d.name}
                 </option>
               ))}
             </select>
-            {isAdmin && onNavigateToUnits && (
-              <button
-                type="button"
-                onClick={onNavigateToUnits}
-                title="Manage Units & Divisions"
-                className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg shrink-0"
-              >
-                <Building2 className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
 
-          {/* Section & Sub-unit Filter */}
-          {availableSections.length > 0 && (
-            <select
-              value={selectedSection}
-              onChange={(e) => setSelectedSection(e.target.value)}
-              className="h-8 px-2.5 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-800 dark:text-zinc-200 font-medium text-xs"
-            >
-              <option value="">All Sections & Units</option>
-              {availableSections.map(sec => (
-                <option key={sec} value={sec}>{sec}</option>
+          {/* 2. Section Filter (cascading) */}
+          <select
+            value={selectedSectionId}
+            onChange={(e) => {
+              setSelectedSectionId(e.target.value);
+              setSelectedUnitId('');
+            }}
+            disabled={!selectedDivisionId}
+            className="h-8 px-2.5 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-800 dark:text-zinc-200 font-medium text-xs disabled:opacity-50"
+          >
+            <option value="">{selectedDivisionId ? 'All Sections' : 'Pick a Division first'}</option>
+            {orgTree
+              .filter(o => o.type === 'section' && (!selectedDivisionId || o.parent_id === Number(selectedDivisionId)))
+              .map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
-            </select>
-          )}
+          </select>
 
-          {/* Group Filter */}
+          {/* 3. Unit Filter (cascading) */}
+          <select
+            value={selectedUnitId}
+            onChange={(e) => setSelectedUnitId(e.target.value)}
+            disabled={!selectedSectionId}
+            className="h-8 px-2.5 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-800 dark:text-zinc-200 font-medium text-xs disabled:opacity-50"
+          >
+            <option value="">{selectedSectionId ? 'All Units' : 'Pick a Section first'}</option>
+            {orgTree
+              .filter(o => o.type === 'unit' && (!selectedSectionId || o.parent_id === Number(selectedSectionId)))
+              .map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+          </select>
+
+          {/* 4. Group Filter */}
           <select
             value={selectedGroupId}
             onChange={(e) => setSelectedGroupId(e.target.value)}
@@ -554,7 +572,7 @@ export function DirectoryView({ onNavigateToUnits }) {
             ))}
           </select>
 
-          {/* Employment Status Filter (only shown on All Staff tab) */}
+          {/* 5. Status Filter (only shown on All Staff tab) */}
           {activeTab === 'all' && (
             <select
               value={selectedStatus}
@@ -569,7 +587,7 @@ export function DirectoryView({ onNavigateToUnits }) {
           )}
 
           {/* Reset Filters button */}
-          {(selectedUnit || selectedGroupId || selectedStatus || search) && (
+          {(selectedDivisionId || selectedSectionId || selectedUnitId || selectedGroupId || selectedStatus || search) && (
             <button
               type="button"
               onClick={handleClearFilters}

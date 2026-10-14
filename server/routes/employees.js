@@ -40,6 +40,9 @@ router.get('/', (req, res) => {
     const {
       search,
       unit,
+      divisionId,
+      sectionId,
+      unitId,
       section,
       groupId,
       status,
@@ -97,7 +100,27 @@ router.get('/', (req, res) => {
       params.push(term, term, term, term, term, term, term, term, term, term, term, term, term, term);
     }
 
-    if (unit && unit.trim()) {
+    // Cascading Org Filters
+    if (unitId) {
+      query += ` AND e.id IN (SELECT employee_id FROM assignments WHERE org_unit_id = ?)`;
+      params.push(Number(unitId));
+    } else if (sectionId) {
+      // All assignments in section or its child units
+      query += ` AND e.id IN (
+        SELECT employee_id FROM assignments
+        WHERE org_unit_id = ? OR org_unit_id IN (SELECT id FROM org_units WHERE parent_id = ?)
+      )`;
+      params.push(Number(sectionId), Number(sectionId));
+    } else if (divisionId) {
+      // All assignments in division or any child sections or child units
+      query += ` AND e.id IN (
+        SELECT employee_id FROM assignments
+        WHERE org_unit_id = ?
+           OR org_unit_id IN (SELECT id FROM org_units WHERE parent_id = ?)
+           OR org_unit_id IN (SELECT id FROM org_units WHERE parent_id IN (SELECT id FROM org_units WHERE parent_id = ?))
+      )`;
+      params.push(Number(divisionId), Number(divisionId), Number(divisionId));
+    } else if (unit && unit.trim()) {
       query += ` AND (e.unit = ? OR e.unit_code = ? OR u.short_code = ?)`;
       params.push(unit.trim(), unit.trim(), unit.trim());
     }
@@ -122,12 +145,45 @@ router.get('/', (req, res) => {
 
     const employees = db.prepare(query).all(...params);
 
+    // Fetch assignments for all returned employees
+    const empIds = employees.map(e => e.id);
+    const assignmentsByEmp = {};
+    if (empIds.length > 0) {
+      const allAssns = db.prepare(`
+        SELECT a.*, o.name as org_unit_name, o.short_code as org_unit_short_code, o.type as org_unit_type,
+               p.name as parent_name, p.short_code as parent_short_code,
+               d.name as division_name, d.short_code as division_short_code
+        FROM assignments a
+        JOIN org_units o ON a.org_unit_id = o.id
+        LEFT JOIN org_units p ON o.parent_id = p.id
+        LEFT JOIN org_units d ON (
+          CASE
+            WHEN o.type = 'division' THEN o.id
+            WHEN o.type = 'section' THEN o.parent_id
+            WHEN o.type = 'unit' THEN p.parent_id
+            ELSE NULL
+          END = d.id
+        )
+        WHERE a.employee_id IN (${empIds.map(() => '?').join(',')})
+        ORDER BY a.is_primary DESC, a.id ASC
+      `).all(...empIds);
+
+      for (const a of allAssns) {
+        if (!assignmentsByEmp[a.employee_id]) assignmentsByEmp[a.employee_id] = [];
+        assignmentsByEmp[a.employee_id].push(a);
+      }
+    }
+
     const formatted = employees.map(emp => {
       const unitCode = emp.unit_code || emp.managed_short_code || (emp.unit ? emp.unit.substring(0, 4).toUpperCase() : '');
       const unitName = emp.managed_unit_name || emp.unit || '';
       const formattedLoc = formatLocation(emp.floor, emp.room) || emp.location;
       const expectedFloor = emp.unit_default_floor || '';
       const locationMismatch = Boolean(emp.floor && expectedFloor && emp.floor.toLowerCase().trim() !== expectedFloor.toLowerCase().trim());
+
+      const assns = assignmentsByEmp[emp.id] || [];
+      const primaryAssn = assns.find(a => a.is_primary === 1) || assns[0] || null;
+      const secondaryAssns = assns.filter(a => a.id !== primaryAssn?.id);
 
       return {
         ...emp,
@@ -138,6 +194,9 @@ router.get('/', (req, res) => {
         expected_floor: expectedFloor,
         needs_review: Boolean(emp.needs_review),
         is_archived: Boolean(emp.is_archived),
+        assignments: assns,
+        primary_assignment: primaryAssn,
+        secondary_assignments: secondaryAssns,
         groups: emp.group_names
           ? emp.group_names.split(',').map((name, i) => ({
               id: Number(emp.group_ids.split(',')[i]),

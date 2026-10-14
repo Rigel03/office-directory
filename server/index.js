@@ -12,6 +12,7 @@ const trainingRoutes = require('./routes/training');
 const importRoutes = require('./routes/import');
 const exportRoutes = require('./routes/export');
 const unitRoutes = require('./routes/units');
+const orgRoutes = require('./routes/org');
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/training', trainingRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/units', unitRoutes);
+app.use('/api/org', orgRoutes);
 
 // General Audit logs endpoint
 app.get('/api/audit-logs', authMiddleware, (req, res) => {

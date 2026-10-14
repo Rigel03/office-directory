@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Navbar } from './components/Navbar';
 import { DirectoryView } from './components/Directory/DirectoryView';
+import { OrganizationView } from './components/Organization/OrganizationView';
 import { GroupsView } from './components/Groups/GroupsView';
 import { TrainingView } from './components/Training/TrainingView';
 import { AuditView } from './components/Audit/AuditView';
@@ -46,7 +47,8 @@ function MainApp() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {activeTab === 'directory' && <DirectoryView onNavigateToUnits={() => setActiveTab('groups')} />}
+        {activeTab === 'directory' && <DirectoryView onNavigateToUnits={() => setActiveTab('organization')} />}
+        {activeTab === 'organization' && <OrganizationView onNavigateToDirectory={() => setActiveTab('directory')} onOpenImport={() => {}} />}
         {activeTab === 'groups' && <GroupsView />}
         {activeTab === 'training' && <TrainingView />}
         {activeTab === 'audit' && <AuditView />}

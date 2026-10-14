@@ -97,7 +97,13 @@ export const api = {
   getSystemAudit: (limit = 50) => request(`/audit-logs?limit=${limit}`),
 
   // Groups
-  getGroups: (type) => request(`/groups${type ? '?type=' + encodeURIComponent(type) : ''}`),
+  getGroups: (params = {}) => {
+    if (typeof params === 'string') {
+      return request(`/groups${params ? '?type=' + encodeURIComponent(params) : ''}`);
+    }
+    const qs = new URLSearchParams(params).toString();
+    return request(`/groups${qs ? '?' + qs : ''}`);
+  },
   getGroup: (id) => request(`/groups/${id}`),
   createGroup: (data) => request('/groups', { method: 'POST', body: JSON.stringify(data) }),
   updateGroup: (id, data) => request(`/groups/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -105,6 +111,16 @@ export const api = {
   addGroupMembers: (id, employeeIds) => request(`/groups/${id}/members`, { method: 'POST', body: JSON.stringify({ employeeIds }) }),
   removeGroupMember: (groupId, employeeId) => request(`/groups/${groupId}/members/${employeeId}`, { method: 'DELETE' }),
   moveGroupMembers: (sourceGroupId, payload) => request(`/groups/${sourceGroupId}/move-members`, { method: 'POST', body: JSON.stringify(payload) }),
+
+  // Organization (Divisions, Sections, Units & Assignments)
+  getOrgTree: () => request('/org/tree'),
+  getOrgDivisions: () => request('/org/divisions'),
+  getOrgDivisionDetails: (id) => request(`/org/divisions/${id}/details`),
+  createOrgUnit: (data) => request('/org/units', { method: 'POST', body: JSON.stringify(data) }),
+  updateOrgUnit: (id, data) => request(`/org/units/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteOrgUnit: (id) => request(`/org/units/${id}`, { method: 'DELETE' }),
+  setOrgAssignment: (data) => request('/org/assignments', { method: 'POST', body: JSON.stringify(data) }),
+  deleteOrgAssignment: (id) => request(`/org/assignments/${id}`, { method: 'DELETE' }),
 
   // Training
   getTrainingRecords: (params = {}) => {

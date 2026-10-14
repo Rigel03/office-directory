@@ -20,7 +20,11 @@ function autoDetectMapping(headers) {
   const mapping = {
     full_name: '',
     position: '',
-    unit: '',
+    division: '',
+    section: '',
+    sub_unit: '',
+    role: '',
+    also_assigned_to: '',
     email: '',
     phone: '',
     location: '',
@@ -36,8 +40,16 @@ function autoDetectMapping(headers) {
       mapping.full_name = h;
     } else if (!mapping.position && (c.includes('position') || c.includes('jobtitle') || c.includes('designation') || c === 'title')) {
       mapping.position = h;
-    } else if (!mapping.unit && (c.includes('unit') || c.includes('division') || c.includes('department') || c.includes('dept') || c.includes('office') || c.includes('section'))) {
-      mapping.unit = h;
+    } else if (!mapping.division && (c.includes('division') || c.includes('dept') || c.includes('department') || c.includes('office') || c === 'unit')) {
+      mapping.division = h;
+    } else if (!mapping.section && (c.includes('section') || c.includes('sec'))) {
+      mapping.section = h;
+    } else if (!mapping.sub_unit && (c.includes('subunit') || c.includes('unit') || c.includes('branch'))) {
+      mapping.sub_unit = h;
+    } else if (!mapping.role && (c.includes('role') || c.includes('rank') || c.includes('head'))) {
+      mapping.role = h;
+    } else if (!mapping.also_assigned_to && (c.includes('also') || c.includes('secondary') || c.includes('cross') || c.includes('otherassignment'))) {
+      mapping.also_assigned_to = h;
     } else if (!mapping.email && (c.includes('email') || c.includes('mail'))) {
       mapping.email = h;
     } else if (!mapping.phone && (c.includes('phone') || c.includes('contact') || c.includes('tel') || c.includes('mobile') || c.includes('ext'))) {
@@ -52,6 +64,43 @@ function autoDetectMapping(headers) {
   });
 
   return mapping;
+}
+
+// Parse complex section text like "Transport Planning (Research and Stats Unit)", "Section A / Section B (Unit)", "Section (Head)"
+function parseSectionString(rawStr) {
+  if (!rawStr) return { section: '', sub_unit: '', also_assigned_to: '', role: 'Staff' };
+  let str = String(rawStr).trim();
+
+  let role = 'Staff';
+  if (/(\bhead\b|division head|section head)/i.test(str)) {
+    role = /division head/i.test(str) ? 'Division Head' : 'Section Head';
+    str = str.replace(/\((?:head|section head|division head)\)/i, '').replace(/\b(?:head|section head|division head)\b/i, '').trim();
+  }
+
+  // Check for dual assignment with "/"
+  let primaryPart = str;
+  let secondaryPart = '';
+  if (str.includes('/')) {
+    const parts = str.split('/').map(p => p.trim());
+    primaryPart = parts[0];
+    secondaryPart = parts.slice(1).join(' / ');
+  }
+
+  // Extract unit in parentheses from primary part
+  let section = primaryPart;
+  let sub_unit = '';
+  const match = primaryPart.match(/^(.*?)\s*\((.*?)\)$/);
+  if (match) {
+    section = match[1].trim();
+    sub_unit = match[2].trim();
+  }
+
+  return {
+    section: section.replace(/\s+/g, ' ').trim(),
+    sub_unit: sub_unit.replace(/\s+/g, ' ').trim(),
+    also_assigned_to: secondaryPart.replace(/\s+/g, ' ').trim(),
+    role
+  };
 }
 
 // POST /api/import/preview (Admin only)
